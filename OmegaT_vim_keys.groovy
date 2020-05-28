@@ -59,9 +59,16 @@ class Listener {
         keyDispatcher = new KeyEventDispatcher() {
             boolean dispatchKeyEvent(KeyEvent e) {
                 eventID = e.getID();
-                // if(eventID != KeyEvent.KEY_PRESSED) {
-                //     return true; // Adding true here makes it so no characters are passed on to the screen
-                // }
+                if(eventID == KeyEvent.KEY_RELEASED) {
+                    console.println 'key released'
+                    // e.consume();
+                    return true; // Adding true here makes it so no characters are passed on to the screen
+                }
+                if(eventID == KeyEvent.KEY_TYPED) {
+                    console.println 'key_typed'
+                    // e.consume();
+                    return (mode == Mode.NORMAL)
+               }
                 try {
                     keyCode = e.getKeyCode();
                     modifierCode = e.getModifiersEx();
@@ -75,6 +82,7 @@ class Listener {
                         enterNormalMode();
                     } else if(keyCode == 73) {
                         enterInsertMode();
+                        console.println 'Enter insert mode'
                         return true;
                     }
                     currentPos = editor.getCurrentPositionInEntryTranslation();
