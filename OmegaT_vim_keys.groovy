@@ -43,7 +43,7 @@ class Listener {
     String currentTrans;
     String insertion;
     int keyCode;
-    int keyChar;
+    String keyChar;
     int modifierCode;
     int currentPos;
     int positionChange;
@@ -82,11 +82,12 @@ class Listener {
 
                     if(modifierCode == 128) {
                         throw new MyNewException('Interrupt');
-                    } else if(keyCode == ENTER_NORMAL) {
+                    } else if(keyChar == ENTER_NORMAL) {
                         enterNormalMode();
                     } else if(keyChar == ENTER_INSERT) {
                         enterInsertMode();
                         console.println 'Enter insert mode'
+                        // TODO: Need to not print the "i" when entering insert mode
                         return true;
                     }
                     currentPos = editor.getCurrentPositionInEntryTranslation();
