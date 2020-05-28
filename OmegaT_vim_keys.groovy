@@ -29,8 +29,8 @@ class VirtualSegment {
 }
 
 class Listener {
-    final ENTER_INSERT = (int)'i' 
-    final ENTER_NORMAL = 27 //escape
+    final String ENTER_INSERT_KEY = 'i' 
+    final int ENTER_NORMAL_KEYCODE = 27
 
     enum Mode {
             NORMAL, INSERT
@@ -42,7 +42,8 @@ class Listener {
     def caret;
     String currentTrans;
     String insertion;
-    int asciiCode;
+    String keyChar;
+    int keyCode;
     int currentPos;
     int positionChange;
     int eventID;
@@ -59,51 +60,70 @@ class Listener {
     def listen() {
         keyDispatcher = new KeyEventDispatcher() {
             boolean dispatchKeyEvent(KeyEvent e) {
-                eventID = e.getID();
-                if isKeyReleasedEvent(eventID) {
-                    console.println 'key released'
-                    return true;
-                }
-                // Pass thru keypresses from backspace and arrow keys
-                if isKeyPressedEvent(eventID)
                 try {
-                    asciiCode = e.getKeyChar();
-                    console.println "char: $asciiCode";
+                    eventID = e.getID();
+                    if(isKeyReleasedEvent(eventID)) {
+                        console.println 'key released'
+                        return true; // Stop key event processing
+                    }
+                    keyChar = e.getKeyChar();
+                    // Pass thru keypresses from backspace and arrow keys
+                    if(isKeyPressedEvent(eventID)) {
+                        if(isNonEnglishKey(keyChar)) {
+                            console.println 'pass through key pressed';
+                            keyCode = e.getKeyCode();
+                            console.println "pressed_code: $keyCode";
+                            if(keyCode == ENTER_NORMAL_KEYCODE) {
+                                enterNormalMode();
+                            }
+                        }
+                        return false; // Pass on key
+                    }
+                    //check what's going on
+                    if(isKeyPressedEvent(eventID)) {
+                        console.print 'key pressed event: '
+                    }
+                    if(isKeyTypedEvent(eventID)) {
+                        console.print 'key typed event: '
+                    }
 
-                    if(asciiCode == (int)'q') {
+                    console.println "typed_char: $keyChar";
+
+                    if(keyChar == 'q') {
                         throw new MyNewException('Interrupt');
-                    } else if(asciiCode == ENTER_NORMAL) {
-                        enterNormalMode();
-                    } else if(asciiCode == ENTER_INSERT) {
-                        enterInsertMode();
-                        console.println 'Enter insert mode'
-                        return true;
                     }
                     currentPos = editor.getCurrentPositionInEntryTranslation();
                     // Need to pass keycode through to get backspace to work
                     if(mode == Mode.NORMAL) {
+                        // The 'i' shouldn't be printing when
+                        // I switch to normal mode
+                        if(keyChar == ENTER_INSERT_KEY) {
+                            enterInsertMode();
+                            return true;
+                        } 
+
                         positionChange = 0;
-                        switch(asciiCode) {
-                            case (int)'h': 
+                        switch(keyChar) {
+                            case 'h': 
                                 positionChange = -1;
-                                    break;
-                            case (int)'l': 
+                                break;
+                            case 'l': 
                                 positionChange = 1;
-                                    break;
+                                break;
                             default:
-                                    break;
+                                break;
                         }
                         caret = new CaretPosition(currentPos + positionChange);		
                         editor.setCaretPosition(caret);	
                         return true;				
                     }
 
-                    console.println "currentPos: $currentPos";
+                    println "This will print ${e.getKeyChar()}"
                     return false;
 
                 } catch (Exception exc) {
-                        removeDispatcher();
-                        console.println exc.getMessage();
+                    removeDispatcher();
+                    console.println exc.getMessage();
                 } finally {
                 }
             }
@@ -123,8 +143,12 @@ class Listener {
         return eventID == KeyEvent.KEY_RELEASED
     }
 
-    def isNonTypedKey(e) {
-        e.getKeyCode = 
+    def isKeyTypedEvent(eventID) {
+        return eventID == KeyEvent.KEY_TYPED
+    }
+
+    def isNonEnglishKey(keyChar) {
+        !('A'..'z').contains(keyChar)
     }
 
     def enterNormalMode() {
@@ -138,8 +162,3 @@ class Listener {
 
 def myListener = new Listener(console, editor);
 myListener.listen();
-	
-
-
-
-
