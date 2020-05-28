@@ -29,6 +29,8 @@ class VirtualSegment {
 }
 
 class Listener {
+    final ENTER_INSERT = 'i' 
+    final ENTER_NORMAL = 27 
 
     enum Mode {
             NORMAL, INSERT
@@ -41,6 +43,7 @@ class Listener {
     String currentTrans;
     String insertion;
     int keyCode;
+    int keyChar;
     int modifierCode;
     int currentPos;
     int positionChange;
@@ -65,22 +68,23 @@ class Listener {
                     return true; // Adding true here makes it so no characters are passed on to the screen
                 }
                 if(eventID == KeyEvent.KEY_TYPED) {
-                    console.println 'key_typed'
+                    // console.println "key typed: e.keyChar "
                     // e.consume();
                     return (mode == Mode.NORMAL)
                }
                 try {
                     keyCode = e.getKeyCode();
+                    keyChar = e.getKeyChar();
                     modifierCode = e.getModifiersEx();
-                    console.println keyCode;
-                    console.println modifierCode;
-                    console.println e.keyChar;
+                    console.println "code: $keyCode";
+                    console.println "modifier code: $modifierCode";
+                    console.println "char: $keyChar";
 
                     if(modifierCode == 128) {
                         throw new MyNewException('Interrupt');
-                    } else if(keyCode == 27) {
+                    } else if(keyCode == ENTER_NORMAL) {
                         enterNormalMode();
-                    } else if(keyCode == 73) {
+                    } else if(keyChar == ENTER_INSERT) {
                         enterInsertMode();
                         console.println 'Enter insert mode'
                         return true;
@@ -103,9 +107,7 @@ class Listener {
                         return true;				
                     }
 
-                    // currentTrans = editor.getCurrentTranslation();
                     console.println "currentPos: $currentPos";
-                    //editor.insertText('d');
                     return false;
 
                 } catch (Exception exc) {
