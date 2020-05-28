@@ -29,8 +29,8 @@ class VirtualSegment {
 }
 
 class Listener {
-    final ENTER_INSERT = 'i' 
-    final ENTER_NORMAL = 27 
+    final ENTER_INSERT = (int)'i' 
+    final ENTER_NORMAL = 27 //escape
 
     enum Mode {
             NORMAL, INSERT
@@ -42,9 +42,7 @@ class Listener {
     def caret;
     String currentTrans;
     String insertion;
-    int keyCode;
-    String keyChar;
-    int modifierCode;
+    int asciiCode;
     int currentPos;
     int positionChange;
     int eventID;
@@ -62,42 +60,34 @@ class Listener {
         keyDispatcher = new KeyEventDispatcher() {
             boolean dispatchKeyEvent(KeyEvent e) {
                 eventID = e.getID();
-                if(eventID == KeyEvent.KEY_RELEASED) {
+                if isKeyReleasedEvent(eventID) {
                     console.println 'key released'
-                    // e.consume();
-                    return true; // Adding true here makes it so no characters are passed on to the screen
+                    return true;
                 }
-                if(eventID == KeyEvent.KEY_TYPED) {
-                    // console.println "key typed: e.keyChar "
-                    // e.consume();
-                    return (mode == Mode.NORMAL)
-               }
+                // Pass thru keypresses from backspace and arrow keys
+                if isKeyPressedEvent(eventID)
                 try {
-                    keyCode = e.getKeyCode();
-                    keyChar = e.getKeyChar();
-                    modifierCode = e.getModifiersEx();
-                    console.println "code: $keyCode";
-                    console.println "modifier code: $modifierCode";
-                    console.println "char: $keyChar";
+                    asciiCode = e.getKeyChar();
+                    console.println "char: $asciiCode";
 
-                    if(modifierCode == 128) {
+                    if(asciiCode == (int)'q') {
                         throw new MyNewException('Interrupt');
-                    } else if(keyChar == ENTER_NORMAL) {
+                    } else if(asciiCode == ENTER_NORMAL) {
                         enterNormalMode();
-                    } else if(keyChar == ENTER_INSERT) {
+                    } else if(asciiCode == ENTER_INSERT) {
                         enterInsertMode();
                         console.println 'Enter insert mode'
-                        // TODO: Need to not print the "i" when entering insert mode
                         return true;
                     }
                     currentPos = editor.getCurrentPositionInEntryTranslation();
+                    // Need to pass keycode through to get backspace to work
                     if(mode == Mode.NORMAL) {
                         positionChange = 0;
-                        switch(keyCode) {
-                            case 72: 
+                        switch(asciiCode) {
+                            case (int)'h': 
                                 positionChange = -1;
                                     break;
-                            case 76: 
+                            case (int)'l': 
                                 positionChange = 1;
                                     break;
                             default:
@@ -123,6 +113,18 @@ class Listener {
 
     def removeDispatcher() {
         manager.removeKeyEventDispatcher(keyDispatcher)
+    }
+
+    def isKeyPressedEvent(eventID) {
+        return eventID == KeyEvent.KEY_PRESSED
+    }
+
+    def isKeyReleasedEvent(eventID) {
+        return eventID == KeyEvent.KEY_RELEASED
+    }
+
+    def isNonTypedKey(e) {
+        e.getKeyCode = 
     }
 
     def enterNormalMode() {
