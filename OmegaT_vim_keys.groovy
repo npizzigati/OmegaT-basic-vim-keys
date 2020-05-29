@@ -95,8 +95,6 @@ class Listener {
                     currentPos = editor.getCurrentPositionInEntryTranslation();
                     // Need to pass keycode through to get backspace to work
                     if(mode == Mode.NORMAL) {
-                        // The 'i' shouldn't be printing when
-                        // I switch to normal mode
                         if(keyChar == ENTER_INSERT_KEY) {
                             enterInsertMode();
                             return true;
