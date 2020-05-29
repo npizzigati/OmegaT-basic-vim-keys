@@ -48,6 +48,7 @@ class Listener {
     int positionChange;
     int eventID;
     def newPos;
+    String key;
     Mode mode;
     KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 
@@ -62,62 +63,78 @@ class Listener {
             boolean dispatchKeyEvent(KeyEvent e) {
                 try {
                     eventID = e.getID();
+
+                    // Is the following block necessary or can we
+                    // just ignore the KEY_RELEASED event?
                     if(isKeyReleasedEvent(eventID)) {
-                        console.println 'key released'
-                        return true; // Stop key event processing
-                    }
-                    keyChar = e.getKeyChar();
-                    // Pass thru keypresses from backspace and arrow keys
-                    if(isKeyPressedEvent(eventID)) {
-                        if(isNonEnglishKey(keyChar)) {
-                            console.println 'pass through key pressed';
-                            keyCode = e.getKeyCode();
-                            console.println "pressed_code: $keyCode";
-                            if(keyCode == ENTER_NORMAL_KEYCODE) {
-                                enterNormalMode();
-                            }
-                        }
-                        return false; // Pass on key
-                    }
-                    //check what's going on
-                    if(isKeyPressedEvent(eventID)) {
-                        console.print 'key pressed event: '
-                    }
-                    if(isKeyTypedEvent(eventID)) {
-                        console.print 'key typed event: '
+                        return true;
+                    } else if(isKeyPressedEvent(eventID)) {
+                        keyCode = e.getKeyCode();
+                        // return true;
                     }
 
-                    console.println "typed_char: $keyChar";
+                    keyChar = e.getKeyChar();
+                    if(keyChar == KeyEvent.CHAR_UNDEFINED) {
+                        console.println 'Not a Unicode char'
+                        key = KeyEvent.getKeyText(keyCode);
+                    } else {
+                        key = keyChar
+                    }
 
                     if(keyChar == 'q') {
                         throw new MyNewException('Interrupt');
                     }
-                    currentPos = editor.getCurrentPositionInEntryTranslation();
-                    // Need to pass keycode through to get backspace to work
-                    if(mode == Mode.NORMAL) {
-                        if(keyChar == ENTER_INSERT_KEY) {
-                            enterInsertMode();
-                            return true;
-                        } 
 
-                        positionChange = 0;
-                        switch(keyChar) {
-                            case 'h': 
-                                positionChange = -1;
-                                break;
-                            case 'l': 
-                                positionChange = 1;
-                                break;
-                            default:
-                                break;
-                        }
-                        caret = new CaretPosition(currentPos + positionChange);		
-                        editor.setCaretPosition(caret);	
-                        return true;				
-                    }
+                    console.println "keyCode: $keyCode"
+                    console.println key
+                    // Pass thru keypresses from backspace and arrow keys
+                    // if(isKeyPressedEvent(eventID)) {
+                    //     if(isNonEnglishKey(keyChar)) {
+                    //         console.println 'pass through key pressed';
+                    //         keyCode = e.getKeyCode();
+                    //         console.println "pressed_code: $keyCode";
+                    //         if(keyCode == ENTER_NORMAL_KEYCODE) {
+                    //             enterNormalMode();
+                    //         }
+                    //     }
+                    //     return false; // Pass on key
+                    // }
+                    // //check what's going on
+                    // if(isKeyPressedEvent(eventID)) {
+                    //     console.print 'key pressed event: '
+                    // }
+                    // if(isKeyTypedEvent(eventID)) {
+                    //     console.print 'key typed event: '
+                    // }
 
-                    println "This will print ${e.getKeyChar()}"
-                    return false;
+                    // console.println "typed_char: $keyChar";
+
+                    // currentPos = editor.getCurrentPositionInEntryTranslation();
+                    // // Need to pass keycode through to get backspace to work
+                    // if(mode == Mode.NORMAL) {
+                    //     if(keyChar == ENTER_INSERT_KEY) {
+                    //         enterInsertMode();
+                    //         return true;
+                    //     } 
+
+                    //     positionChange = 0;
+                    //     switch(keyChar) {
+                    //         case 'h': 
+                    //             positionChange = -1;
+                    //             break;
+                    //         case 'l': 
+                    //             positionChange = 1;
+                    //             break;
+                    //         default:
+                    //             break;
+                    //     }
+                    //     caret = new CaretPosition(currentPos + positionChange);		
+                    //     editor.setCaretPosition(caret);	
+                    //     return true;				
+                    // }
+
+                    // println "This will print ${e.getKeyChar()}"
+                    // return false;
 
                 } catch (Exception exc) {
                     removeDispatcher();
