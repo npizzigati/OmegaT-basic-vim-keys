@@ -1,2 +1,2 @@
-# omegaT-vimkeys
-Vim keys for OmegaT
+# OmegaT-basic-vim-keys
+Basic Vim keys for OmegaT
