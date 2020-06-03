@@ -51,7 +51,7 @@ class Listener implements KeyListener {
   }
 
   void keyTyped(KeyEvent event) {
-    try {
+    // try {
       if(isRedispatchedEvent(event)) {
         return;
       }
@@ -61,11 +61,11 @@ class Listener implements KeyListener {
       // when processKeyEvents is called
       processKeyEvents();
       event.consume();
-    } catch (Exception exc) {
-      println exc.getMessage();
-      pane.removeKeyListener(this);
-    } finally {
-    }
+    // } catch (Exception exc) {
+      // println exc.getMessage();
+      // pane.removeKeyListener(this);
+    // } finally {
+    // }
   }
 
   void processKeyEvents() {
