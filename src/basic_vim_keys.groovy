@@ -9,7 +9,7 @@ import org.omegat.gui.editor.IEditor.CaretPosition;
 import org.omegat.gui.editor.EditorController;
 import org.omegat.gui.editor.EditorTextArea3;
 
-class InterruptException extends RuntimeException {
+class InterruptException extends Exception {
 
   InterruptException(){
     super();
@@ -22,6 +22,101 @@ class InterruptException extends RuntimeException {
 
 class Listener implements KeyListener {
 
+  char keyChar;
+  EditorTextArea3 pane;
+  KeyEvent lastKeyPressed;
+  KeyEvent lastKeyTyped;
+  KeyManager manager;
+  Stroke stroke;
+
+  Listener(EditorController editor, EditorTextArea3 pane) {
+    this.pane = pane;
+    println 'Listener initialized';
+    lastKeyPressed = null;
+    lastKeyTyped = null;
+    manager = new KeyManager(editor, pane);
+    startListening();
+  }
+
+  void startListening() {
+    pane.addKeyListener(this);
+  }
+
+  void stopListening () {
+    pane.removeKeyListener(this);
+  }
+  
+  void keyPressed(KeyEvent event) {
+    if(isRedispatchedEvent(event)) {
+      return; //This will pass on event to pane
+    }
+    lastKeyPressed = event;
+    event.consume();
+  }
+
+  void keyTyped(KeyEvent event) {
+    if(isRedispatchedEvent(event)) {
+    return;
+    }
+    lastKeyTyped = event;
+    // Since the keyTyped event comes after the keyPressed event
+    // both of the respective instance variables are available
+    // when stroke is instantiated
+    stroke = new Stroke(lastKeyPressed, lastKeyTyped)
+    try {
+      manager.processKey(stroke);
+    } catch (InterruptException e) {
+      stopListening()
+      println e.message
+    }
+    // processKeyEvents();
+    event.consume();
+  }
+
+  // void processKeyEvents() {
+  //   keyChar = lastKeyTyped.getKeyChar();
+  //   println "keyChar: $keyChar";
+
+  //   if (keyChar == 'q') {
+  //     stopListening();
+  //   }
+
+  //   if (isNotVimKey(keyChar)) {
+  //     redispatchEvent(lastKeyPressed);
+  //   } else if((int)keyChar == 27) {
+  //     enterNormalMode();
+  //     println "Entering normal mode";
+  //   } else if(keyChar == 't') {
+  //     testSelection();
+  //     println "testing selection";
+  //   } else {
+  //     redispatchEvent(lastKeyTyped);
+  //   }
+  // }
+
+  void keyReleased(KeyEvent releasedEvent) {
+    releasedEvent.consume();
+  }
+
+  boolean isRedispatchedEvent(KeyEvent event) {
+    KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastKeyPressed : lastKeyTyped;
+    ((lastConsumedEvent != null) && (lastConsumedEvent.getWhen() == event.getWhen()))
+  }
+
+}
+
+class Stroke {
+  KeyEvent keyPressed;
+  KeyEvent keyTyped;
+
+  Stroke(keyPressed, keyTyped) {
+    this.keyPressed = keyPressed;
+    this.keyTyped = keyTyped;
+  }
+
+}
+
+class KeyManager {
   enum Mode {
       NORMAL, INSERT
   }
@@ -30,54 +125,23 @@ class Listener implements KeyListener {
   char keyChar;
   EditorController editor;
   EditorTextArea3 pane;
-  KeyEvent lastKeyPressed;
-  KeyEvent lastKeyTyped;
 
-  Listener(EditorController editor, EditorTextArea3 pane) {
-    pane.addKeyListener(this)
+  KeyManager(editor, pane) {
     this.editor = editor;
     this.pane = pane;
-    println 'Listener initialized'
-    lastKeyPressed = null;
-    lastKeyTyped = null;
   }
 
-  void keyPressed(KeyEvent event) {
-    if(isRedispatchedEvent(event)) {
-      return;
-    }
-    lastKeyPressed = event;
-    event.consume();
-  }
-
-  void keyTyped(KeyEvent event) {
-    // try {
-      if(isRedispatchedEvent(event)) {
-        return;
-      }
-      lastKeyTyped = event;
-      // Since the keyTyped event comes after the keyPressed event
-      // both of the respective instance variables are available
-      // when processKeyEvents is called
-      processKeyEvents();
-      event.consume();
-    // } catch (Exception exc) {
-      // println exc.getMessage();
-      // pane.removeKeyListener(this);
-    // } finally {
-    // }
-  }
-
-  void processKeyEvents() {
-    keyChar = lastKeyTyped.getKeyChar();
+  void processKey(stroke) {
+    // put stroke in somekind of history?
+    keyChar = stroke.keyTyped.getKeyChar();
     println "keyChar: $keyChar";
 
-    if(keyChar == 'q') {
-      throw new InterruptException('Interrupt');
+    if (keyChar == 'q') {
+      throw new InterruptException("Listening interrupted")
     }
 
-    if(isNotVimKey(keyChar)) {
-      redispatchEvent(lastKeyPressed);
+    if (isNotVimKey(keyChar)) {
+      redispatchEvent(stroke.keyPressed);
     } else if((int)keyChar == 27) {
       enterNormalMode();
       println "Entering normal mode";
@@ -85,7 +149,7 @@ class Listener implements KeyListener {
       testSelection();
       println "testing selection";
     } else {
-      redispatchEvent(lastKeyTyped);
+      redispatchEvent(stroke.keyTyped);
     }
   }
 
@@ -100,15 +164,6 @@ class Listener implements KeyListener {
     editor.setCaretPosition(caret);
   }
 
-  void keyReleased(KeyEvent releasedEvent) {
-    releasedEvent.consume();
-  }
-
-  boolean isRedispatchedEvent(KeyEvent event) {
-    KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastKeyPressed : lastKeyTyped;
-    ((lastConsumedEvent != null) && (lastConsumedEvent.getWhen() == event.getWhen()))
-  }
-
   void redispatchEvent(KeyEvent event) {
     pane.dispatchEvent(new KeyEvent(pane, event.getID(), event.getWhen(),
                                     event.getModifiers(), event.getKeyCode(), event.getKeyChar()));
@@ -121,7 +176,7 @@ class Listener implements KeyListener {
   void enterInsertMode() {
     mode = Mode.INSERT
   }
-}
+} 
 
 new Listener(editor, editor.editor);
 
