@@ -7,7 +7,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import javax.swing.JFrame;
 import javax.swing.text.DefaultCaret;
-import java.awt.Robot;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
@@ -30,12 +29,9 @@ class Listener implements KeyListener {
   KeyEvent lastKeyTyped;
   KeyManager manager;
   Stroke stroke;
-  boolean testing;
 
   Listener(EditorController editor,
-           EditorTextArea3 pane,
-           boolean testing) {
-    this.testing = testing
+           EditorTextArea3 pane) {
     this.pane = pane;
     println 'Listener initialized';
     lastKeyPressed = null;
@@ -91,21 +87,6 @@ class Listener implements KeyListener {
   boolean isRedispatchedEvent(KeyEvent event) {
     KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastKeyPressed : lastKeyTyped;
     ((lastConsumedEvent != null) && (lastConsumedEvent.getWhen() == event.getWhen()))
-  }
-}
-
-class TestRobot {
-
-  // Constants for creation of missing KeyTyped event;
-  // final Range PRINTABLE_ASCII_RANGE = (32..126);
-  static void run(robotKeyPresses) {
-    Robot robot = new Robot();
-    robot.delay(500);
-    robotKeyPresses.each {
-      robot.keyPress(it);
-      robot.keyRelease(it);
-      robot.delay(500);
-    }
   }
 }
 
@@ -294,9 +275,6 @@ class KeyManager {
 if (binding.hasVariable('testing')) { 
   editor = new EditorController();
   testWindow.setup(editor.editor);
-  if (binding.hasVariable('robotKeyPresses')) { 
-    TestRobot.run(robotKeyPresses);
-  } 
 }
 
-new Listener(editor, editor.editor, testing);
+new Listener(editor, editor.editor);
