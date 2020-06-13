@@ -5,12 +5,14 @@
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
-import org.omegat.gui.editor.IEditor.CaretPosition;
-import org.omegat.gui.editor.EditorController;
+import javax.swing.JFrame;
+import javax.swing.text.DefaultCaret;
+import java.awt.Robot;
+import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
+import org.omegat.gui.editor.EditorController;
 
 class InterruptException extends Exception {
-
   InterruptException(){
     super();
   }
@@ -28,8 +30,12 @@ class Listener implements KeyListener {
   KeyEvent lastKeyTyped;
   KeyManager manager;
   Stroke stroke;
+  boolean testing;
 
-  Listener(EditorController editor, EditorTextArea3 pane) {
+  Listener(EditorController editor,
+           EditorTextArea3 pane,
+           boolean testing) {
+    this.testing = testing
     this.pane = pane;
     println 'Listener initialized';
     lastKeyPressed = null;
@@ -40,17 +46,23 @@ class Listener implements KeyListener {
 
   void startListening() {
     pane.addKeyListener(this);
+    println 'Listening now';
   }
 
   void stopListening () {
     pane.removeKeyListener(this);
   }
-  
+
   void keyPressed(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
+      println 'Redispatched event';
       return; //This will pass on event to pane
     }
+
     lastKeyPressed = event;
+    println "Key press event: "
+    print event.getKeyCode();
+
     event.consume();
   }
 
@@ -64,35 +76,13 @@ class Listener implements KeyListener {
     // when stroke is instantiated
     stroke = new Stroke(lastKeyPressed, lastKeyTyped)
     try {
-      manager.processKey(stroke);
+      manager.route(stroke);
     } catch (InterruptException e) {
       stopListening()
       println e.message
     }
-    // processKeyEvents();
     event.consume();
   }
-
-  // void processKeyEvents() {
-  //   keyChar = lastKeyTyped.getKeyChar();
-  //   println "keyChar: $keyChar";
-
-  //   if (keyChar == 'q') {
-  //     stopListening();
-  //   }
-
-  //   if (isNotVimKey(keyChar)) {
-  //     redispatchEvent(lastKeyPressed);
-  //   } else if((int)keyChar == 27) {
-  //     enterNormalMode();
-  //     println "Entering normal mode";
-  //   } else if(keyChar == 't') {
-  //     testSelection();
-  //     println "testing selection";
-  //   } else {
-  //     redispatchEvent(lastKeyTyped);
-  //   }
-  // }
 
   void keyReleased(KeyEvent releasedEvent) {
     releasedEvent.consume();
@@ -102,7 +92,21 @@ class Listener implements KeyListener {
     KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastKeyPressed : lastKeyTyped;
     ((lastConsumedEvent != null) && (lastConsumedEvent.getWhen() == event.getWhen()))
   }
+}
 
+class TestRobot {
+
+  // Constants for creation of missing KeyTyped event;
+  // final Range PRINTABLE_ASCII_RANGE = (32..126);
+  static void run(robotKeyPresses) {
+    Robot robot = new Robot();
+    robot.delay(500);
+    robotKeyPresses.each {
+      robot.keyPress(it);
+      robot.keyRelease(it);
+      robot.delay(500);
+    }
+  }
 }
 
 class Stroke {
@@ -116,267 +120,183 @@ class Stroke {
 
 }
 
-class KeyManager {
-  enum Mode {
-      NORMAL, INSERT
+class Mode {
+
+  KeyManager manager;
+
+  enum ModeID {
+    NORMAL, INSERT, VISUAL;
   }
 
-  Mode mode;
+  Mode(KeyManager manager) {
+    this.manager = manager;
+  }
+
+
+  void process(Stroke stroke) {
+  }
+}
+
+class NormalMode extends Mode {
+
+  NormalMode(KeyManager manager) {
+    super(manager);
+  }
+
+  void process(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
+    if (keyChar == 'i') {
+      manager.switchTo(ModeID.INSERT)
+    }
+  }
+}
+
+class InsertMode extends Mode {
+
+  InsertMode(KeyManager manager) {
+    super(manager);
+  }
+
+  void process(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
+    if ((int)keyChar == 27) {
+      manager.switchTo(ModeID.NORMAL)
+    } else {
+      manager.redispatchEvent(stroke.keyTyped);
+    }
+  }
+}
+
+class VisualMode extends Mode {
+  VisualMode(KeyManager manager) {
+    super(manager);
+  }
+}
+
+class KeyManager {
+
+  Mode normalMode;
+  Mode insertMode;
+  Mode visualMode;
+  Mode currentMode;
   char keyChar;
   EditorController editor;
   EditorTextArea3 pane;
 
-  KeyManager(editor, pane) {
+  KeyManager(EditorController editor, EditorTextArea3 pane) {
     this.editor = editor;
     this.pane = pane;
+    normalMode = new NormalMode(this);
+    insertMode = new InsertMode(this);
+    visualMode = new VisualMode(this);
+    currentMode = normalMode;
   }
 
-  void processKey(stroke) {
-    // put stroke in somekind of history?
+  void switchTo(modeID) {
+    switch(modeID) {
+      case modeID.NORMAL:
+        currentMode = normalMode;
+        println('Switching to normal mode')
+        break;
+      case modeID.INSERT:
+        currentMode = insertMode;
+        println('Switching to insert mode')
+        break;
+      case modeID.VISUAL:
+        currentMode = visualMode;
+        println('Switching to visual mode')
+        break;
+    }
+  }
+
+  void route(Stroke stroke) {
+    // put stroke in some kind of history?
+
+
+    // Temporary debugging stuff
     keyChar = stroke.keyTyped.getKeyChar();
+    int keyWhen = stroke.keyTyped.getWhen();
+    int modifiers = stroke.keyTyped.getModifiers();
+    int keyCode = stroke.keyTyped.getKeyCode();
+    int id = stroke.keyTyped.getID();
+
+    println "KeyTyped info";
     println "keyChar: $keyChar";
+    println "When: $keyWhen";
+    println "Modifiers: $modifiers";
+    println "keyCode: $keyCode";
+    println "ID: $id";
+    println "" 
+
+    int pKeyChar = stroke.keyPressed.getKeyChar();
+    int pKeyWhen = stroke.keyPressed.getWhen();
+    int pModifiers = stroke.keyPressed.getModifiers();
+    int pKeyCode = stroke.keyPressed.getKeyCode();
+    int pId = stroke.keyPressed.getID();
+    println "KeyPressed info";
+    println "keyChar: $pKeyChar";
+    println "When: $pKeyWhen";
+    println "Modifiers: $pModifiers";
+    println "keyCode: $pKeyCode";
+    println "ID: $pId";
+    println "" 
+
+    // End temporary debugging stuff
+
 
     if (keyChar == 'q') {
-      throw new InterruptException("Listening interrupted")
+      throw new InterruptException('Listening interrupted');
     }
 
     if (isNotVimKey(keyChar)) {
       redispatchEvent(stroke.keyPressed);
-    } else if((int)keyChar == 27) {
-      enterNormalMode();
-      println "Entering normal mode";
-    } else if(keyChar == 't') {
-      testSelection();
-      println "testing selection";
     } else {
-      redispatchEvent(stroke.keyTyped);
+      currentMode.process(stroke);
     }
+    // } else if((int)keyChar == 27) {
+    //   enterNormalMode();
+    //   println "Entering normal mode";
+    // } else if(keyChar == 't') {
+    //   testSelection();
+    //   println "testing selection";
+    // } else {
+    //   redispatchEvent(stroke.keyTyped);
+    // }
   }
 
-  boolean isNotVimKey(keyChar) {
-    (keyChar == KeyEvent.CHAR_UNDEFINED) || ((int)keyChar == 127);
+  // The delete key doesn't seem to show up as CHAR_UNDEFINED, so
+  // we check for it separately
+  boolean isNotVimKey(char keyChar) {
+    (keyChar == KeyEvent.CHAR_UNDEFINED) || isDelete(keyChar);
+  }
+
+  boolean isDelete(char keyChar) {
+    (int)keyChar == 127;
   }
 
   void testSelection() {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
-    int positionChange = 2
-    CaretPosition caret = new CaretPosition(currentPos, currentPos + positionChange);
+    int positionChange = 2;
+    IEditor.CaretPosition caret = new IEditor.CaretPosition(currentPos,
+                                            currentPos + positionChange);
     editor.setCaretPosition(caret);
   }
 
   void redispatchEvent(KeyEvent event) {
-    pane.dispatchEvent(new KeyEvent(pane, event.getID(), event.getWhen(),
-                                    event.getModifiers(), event.getKeyCode(), event.getKeyChar()));
+    pane.dispatchEvent(new KeyEvent(pane, event.getID(),
+                                    event.getWhen(),
+                                    event.getModifiers(),
+                                    event.getKeyCode(),
+                                    event.getKeyChar()));
   }
+}
 
-  void enterNormalMode() {
-    mode = Mode.NORMAL
-  }
+if (binding.hasVariable('testing')) { 
+  editor = new EditorController();
+  testWindow.setup(editor.editor);
+  if (binding.hasVariable('robotKeyPresses')) { 
+    TestRobot.run(robotKeyPresses);
+  } 
+}
 
-  void enterInsertMode() {
-    mode = Mode.INSERT
-  }
-} 
-
-new Listener(editor, editor.editor);
-
-
-  // private void displayInfo(KeyEvent e, String keyStatus){
-
-  //   //You should only rely on the key char if the event
-  //   //is a key typed event.
-  //   int id = e.getID();
-  //   String keyString;
-  //   if (id == KeyEvent.KEY_TYPED) {
-  //     char c = e.getKeyChar();
-  //     keyString = "key character = '" + c + "'";
-  //   } else {
-  //     int keyCode = e.getKeyCode();
-  //     keyString = "key code = " + keyCode
-  //         + " ("
-  //         + KeyEvent.getKeyText(keyCode)
-  //         + ")";
-  //   }
-
-  //   int modifiersEx = e.getModifiersEx();
-  //   String modString = "extended modifiers = " + modifiersEx;
-  //   String tmpString = KeyEvent.getModifiersExText(modifiersEx);
-  //   if (tmpString.length() > 0) {
-  //     modString += " (" + tmpString + ")";
-  //   } else {
-  //     modString += " (no extended modifiers)";
-  //   }
-  // }
-// editor.editor.addKeyListener(myListener);
-// myListener.listen();
-
-// class MyNewException extends RuntimeException {
-
-//   def MyNewException(){
-//     super();
-//   }
-
-//   def MyNewException(String message){
-//     super(message);
-//   }
-// }
-
-// class VirtualSegment {
-//   String content;
-
-//   VirtualSegment(segment) {
-//       content = segment;
-//   }
-
-//   String toString() {
-//       return content;
-//   }
-
-// }
-
-// class Listener {
-//   final String ENTER_INSERT_KEY = 'i'
-//   final int ENTER_NORMAL_KEYCODE = 27
-
-//   enum Mode {
-//       NORMAL, INSERT
-//   }
-
-//   KeyEventDispatcher keyDispatcher;
-//   def console;
-//   def editor;
-//   def caret;
-//   String currentTrans;
-//   String insertion;
-//   String keyChar;
-//   int keyCode;
-//   int currentPos;
-//   int positionChange;
-//   int eventID;
-//   def newPos;
-//   String key;
-//   Mode mode;
-//   KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-
-//   Listener(console, editor) {
-//     this.console = console
-//     this.editor = editor
-//     mode = Mode.NORMAL
-//   }
-
-//   def listen() {
-//     keyDispatcher = new KeyEventDispatcher() {
-//       boolean dispatchKeyEvent(KeyEvent e) {
-//         try {
-//           eventID = e.getID();
-
-//           // Is the following block necessary or can we
-//           // just ignore the KEY_RELEASED event?
-//           if(isKeyReleasedEvent(eventID)) {
-//             return true;
-//           } else if(isKeyPressedEvent(eventID)) {
-//             keyCode = e.getKeyCode();
-//             // return true;
-//           }
-
-//           keyChar = e.getKeyChar();
-//           if(keyChar == KeyEvent.CHAR_UNDEFINED) {
-//             console.println 'Not a Unicode char'
-//             key = KeyEvent.getKeyText(keyCode);
-//           } else {
-//             key = keyChar
-//           }
-
-//           if(keyChar == 'q') {
-//             throw new MyNewException('Interrupt');
-//           }
-
-//           console.println "keyCode: $keyCode"
-//           console.println key
-          // Pass thru keypresses from backspace and arrow keys
-          // if(isKeyPressedEvent(eventID)) {
-          //   if(isNonEnglishKey(keyChar)) {
-          //     console.println 'pass through key pressed';
-          //     keyCode = e.getKeyCode();
-          //     console.println "pressed_code: $keyCode";
-          //     if(keyCode == ENTER_NORMAL_KEYCODE) {
-          //       enterNormalMode();
-          //     }
-          //   }
-          //   return false; // Pass on key
-          // }
-          // //check what's going on
-          // if(isKeyPressedEvent(eventID)) {
-          //   console.print 'key pressed event: '
-          // }
-          // if(isKeyTypedEvent(eventID)) {
-          //   console.print 'key typed event: '
-          // }
-
-          // console.println "typed_char: $keyChar";
-
-          // currentPos = editor.getCurrentPositionInEntryTranslation();
-          // // Need to pass keycode through to get backspace to work
-          // if(mode == Mode.NORMAL) {
-          //   if(keyChar == ENTER_INSERT_KEY) {
-          //     enterInsertMode();
-          //     return true;
-          //   }
-
-          //   positionChange = 0;
-          //   switch(keyChar) {
-          //     case 'h':
-          //       positionChange = -1;
-          //       break;
-          //     case 'l':
-          //       positionChange = 1;
-          //       break;
-          //     default:
-          //       break;
-          //   }
-          //   caret = new CaretPosition(currentPos + positionChange);
-          //   editor.setCaretPosition(caret);
-          //   return true;
-          // }
-
-          // println "This will print ${e.getKeyChar()}"
-          // return false;
-
-        // } catch (Exception exc) {
-        //   removeDispatcher();
-        //   console.println exc.getMessage();
-        // } finally {
-        // }
-//       }
-//     };
-//     manager.addKeyEventDispatcher(keyDispatcher);
-//   }
-
-//   def removeDispatcher() {
-//     manager.removeKeyEventDispatcher(keyDispatcher)
-//   }
-
-//   def isKeyPressedEvent(eventID) {
-//     return eventID == KeyEvent.KEY_PRESSED
-//   }
-
-//   def isKeyReleasedEvent(eventID) {
-//     return eventID == KeyEvent.KEY_RELEASED
-//   }
-
-//   def isKeyTypedEvent(eventID) {
-//     return eventID == KeyEvent.KEY_TYPED
-//   }
-
-//   def isNonEnglishKey(keyChar) {
-//     !('A'..'z').contains(keyChar)
-//   }
-
-//   def enterNormalMode() {
-//     mode = Mode.NORMAL
-//   }
-
-//   def enterInsertMode() {
-//     mode = Mode.INSERT
-//   }
-// }
+new Listener(editor, editor.editor, testing);
