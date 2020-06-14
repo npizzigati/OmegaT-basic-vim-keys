@@ -6,7 +6,6 @@
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import javax.swing.JFrame;
-import javax.swing.text.DefaultCaret;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
@@ -126,8 +125,13 @@ class NormalMode extends Mode {
 
   void process(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
-    if (keyChar == 'i') {
-      manager.switchTo(ModeID.INSERT)
+    switch (keyChar) {
+      case 'i':
+        manager.switchTo(ModeID.INSERT);
+        break;
+      case 'h':
+        manager.moveCaret(-1)
+        break;
     }
   }
 }
@@ -261,6 +265,14 @@ class KeyManager {
     IEditor.CaretPosition caret = new IEditor.CaretPosition(currentPos,
                                             currentPos + positionChange);
     editor.setCaretPosition(caret);
+  }
+
+  void moveCaret(int positionChange) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    println "currentPos = $currentPos"
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(currentPos +
+                                                            positionChange);
+    editor.setCaretPosition(caretPosition);
   }
 
   void redispatchEvent(KeyEvent event) {

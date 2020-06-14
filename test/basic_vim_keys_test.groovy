@@ -80,12 +80,29 @@ class VimKeysTest extends GroovyTestCase {
     assertEquals('a', binding.editor.editor.getText());
   }
 
-  void testlKeyMovesOneSpaceForwardInNormalMode() {
+  void testhMovesOneSpaceBackInNormalMode() {
     setupShell();
-    def robotKeyPresses = [KeyEvent.VK_L];
-
+    def robotKeyPresses = [KeyEvent.VK_I,
+                           KeyEvent.VK_A,
+                           KeyEvent.VK_ESCAPE,
+                           KeyEvent.VK_H]
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.run(robotKeyPresses);
-    assertEquals('a', binding.editor.editor.getText());
+    // assertEquals('a', binding.editor.editor.getText());
+  }
+
+  void testhhMovesTwoSpacesBackInNormalMode() {
+    setupShell();
+    def robotKeyPresses = [KeyEvent.VK_I,
+                           KeyEvent.VK_A,
+                           KeyEvent.VK_A,
+                           KeyEvent.VK_ESCAPE,
+                           KeyEvent.VK_H,
+                           KeyEvent.VK_H,
+                           KeyEvent.VK_I,
+                           KeyEvent.VK_B]
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.run(robotKeyPresses);
+    // assertEquals('a', binding.editor.editor.getText());
   }
 }

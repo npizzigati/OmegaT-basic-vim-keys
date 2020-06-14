@@ -1,5 +1,7 @@
 package org.omegat.gui.editor;
 
+import javax.swing.text.DefaultCaret;
+
 public class EditorController implements IEditor {
   // Note that "editor" in the declaration below is referring to
   // the pane inside the fake editor; OmegaT instantiates both as
@@ -12,16 +14,24 @@ public class EditorController implements IEditor {
   }
 
   public int getCurrentPositionInEntryTranslation() {
-    return editor.getCaretPosition;
+    return editor.getCaretPosition();
   }
 
+  // Need to have another method signature for 2 inputs
+  // (to mark selection)
   public void setCaretPosition(CaretPosition pos) {
-    if (pos.position != null) {
-      editor.setCaretPosition(pos.position);
-    } else if (pos.selectionStart != null
-               && pos.selectionEnd != null) {
-      editor.select(off + pos.selectionStart,
-                    off + pos.selectionEnd);
-    }
+    // Original OmegaT implementation
+    // if (pos.position != null) {
+    //   editor.setCaretPosition(pos.position);
+    // } else if (pos.selectionStart != null
+    //            && pos.selectionEnd != null) {
+    //   editor.select(off + pos.selectionStart,
+    //                 off + pos.selectionEnd);
+    // }
+
+    // Fake implementation for testing
+
+    DefaultCaret caret = editor.getCaret();
+    caret.setDot(pos.getPosition());
   }
 }

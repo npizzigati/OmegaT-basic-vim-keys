@@ -23,5 +23,11 @@ public interface IEditor {
     public static CaretPosition startOfEntry() {
       return new CaretPosition(0);
     }
+
+    // Metnods in fake implemetation (only available to tests)
+    public int getPosition() {
+      return position; 
+    }
+
   }
 }
