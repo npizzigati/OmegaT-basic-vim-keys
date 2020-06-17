@@ -6,6 +6,9 @@
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import javax.swing.JFrame;
+import javax.swing.JEditorPane;
+import javax.swing.PopupFactory;
+import javax.swing.Popup;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
@@ -112,7 +115,6 @@ class Mode {
     this.manager = manager;
   }
 
-
   void process(Stroke stroke) {
   }
 }
@@ -131,6 +133,9 @@ class NormalMode extends Mode {
         break;
       case 'h':
         manager.moveCaret(-1)
+        break;
+      case 'l':
+        manager.moveCaret(1)
         break;
     }
   }
@@ -197,40 +202,8 @@ class KeyManager {
   void route(Stroke stroke) {
     // put stroke in some kind of history?
 
-
-    // Temporary debugging stuff
-    keyChar = stroke.keyTyped.getKeyChar();
-    int keyWhen = stroke.keyTyped.getWhen();
-    int modifiers = stroke.keyTyped.getModifiers();
-    int keyCode = stroke.keyTyped.getKeyCode();
-    int id = stroke.keyTyped.getID();
-
-    println "KeyTyped info";
-    println "keyChar: $keyChar";
-    println "When: $keyWhen";
-    println "Modifiers: $modifiers";
-    println "keyCode: $keyCode";
-    println "ID: $id";
-    println "" 
-
-    int pKeyChar = stroke.keyPressed.getKeyChar();
-    int pKeyWhen = stroke.keyPressed.getWhen();
-    int pModifiers = stroke.keyPressed.getModifiers();
-    int pKeyCode = stroke.keyPressed.getKeyCode();
-    int pId = stroke.keyPressed.getID();
-    println "KeyPressed info";
-    println "keyChar: $pKeyChar";
-    println "When: $pKeyWhen";
-    println "Modifiers: $pModifiers";
-    println "keyCode: $pKeyCode";
-    println "ID: $pId";
-    println "" 
-
-    // End temporary debugging stuff
-
-
     if (keyChar == 'q') {
-      throw new InterruptException('Listening interrupted');
+      System.exit(0);
     }
 
     if (isNotVimKey(keyChar)) {
@@ -289,4 +262,5 @@ if (binding.hasVariable('testing')) {
   testWindow.setup(editor.editor);
 }
 
+println binding.variables
 new Listener(editor, editor.editor);

@@ -1,5 +1,6 @@
 import java.awt.event.KeyEvent;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.text.DefaultCaret;
 import java.awt.Robot;
 
@@ -10,8 +11,6 @@ class VimKeysTest extends GroovyTestCase {
   class TestWindow {
     def frame;
     def caret;
-    def binding;
-    def shell;
 
     void setup(pane) {
       frame = new JFrame();
@@ -32,32 +31,26 @@ class VimKeysTest extends GroovyTestCase {
     }
   }
 
-  // Can I make the loading of the window something that
-  // happens only once with every test suite run?
-  // void testInsertsTextInNormalMode() {
-  //   Binding binding = new Binding();
-  //   GroovyShell shell = new GroovyShell(binding);
-  //   binding.testWindow = new TestWindow();
-
-  //   binding.testing = true;
-  //   binding.robotKeyPresses = [KeyEvent.VK_J, KeyEvent.VK_B]
-
-  //   shell.evaluate(new File('../src/basic_vim_keys.groovy'));
-  //   assertEquals('jb', binding.editor.editor.getText());
-  // }
-
   class TestRobot {
-    
-    static void run(robotKeyPresses) {
+    static void enterKeys(String robotKeys) {
       Robot robot = new Robot();
-      robot.setAutoDelay(40);
       robot.setAutoWaitForIdle(true);
-      robot.delay(500);
-      robotKeyPresses.each {
-        robot.keyPress(it);
-        robot.keyRelease(it);
-        robot.delay(500);
+
+      // Create KeyEvent instance to be used in reflection to produce VK constant
+      KeyEvent dummyKeyEvent = createDummyKeyEvent();
+
+      String[] robotKeysArray = robotKeys.split();
+      robotKeysArray.each {
+        String upcaseChar = it.toUpperCase();
+        int vkKey = KeyEvent.getDeclaredField("VK_$upcaseChar").get(dummyKeyEvent);
+        robot.keyPress(vkKey);
+        robot.keyRelease(vkKey);
       }
+    }
+
+    static void createDummyKeyEvent() {
+      new KeyEvent(new JPanel(), KeyEvent.KEY_TYPED,
+                   System.currentTimeMillis(), 0, 0, (char)'a');
     }
   }
 
@@ -68,41 +61,61 @@ class VimKeysTest extends GroovyTestCase {
     binding.testing = true;
   }
 
+  // In robotKeys test string, each character should be separated by a
+  // space and named as they are in the VK constants in the java KeyEvent
+  // class
+
   void testDoesNotInsertTextInNormalMode() {
     setupShell();
-    def robotKeyPresses = [KeyEvent.VK_I,
-                           KeyEvent.VK_A,
-                           KeyEvent.VK_ESCAPE,
-                           KeyEvent.VK_B]
+    String robotKeys = 'i a ESCAPE b'
 
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
-    TestRobot.run(robotKeyPresses);
+    TestRobot.enterKeys(robotKeys);
     assertEquals('a', binding.editor.editor.getText());
   }
 
   void testhMovesOneSpaceBackInNormalMode() {
     setupShell();
-    def robotKeyPresses = [KeyEvent.VK_I,
-                           KeyEvent.VK_A,
-                           KeyEvent.VK_ESCAPE,
-                           KeyEvent.VK_H]
+
+    String robotKeys = 'i a ESCAPE h'
+
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
-    TestRobot.run(robotKeyPresses);
-    // assertEquals('a', binding.editor.editor.getText());
+
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 0
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
   }
 
   void testhhMovesTwoSpacesBackInNormalMode() {
     setupShell();
-    def robotKeyPresses = [KeyEvent.VK_I,
-                           KeyEvent.VK_A,
-                           KeyEvent.VK_A,
-                           KeyEvent.VK_ESCAPE,
-                           KeyEvent.VK_H,
-                           KeyEvent.VK_H,
-                           KeyEvent.VK_I,
-                           KeyEvent.VK_B]
+
+    String robotKeys = 'i a a ESCAPE h h i b'
+
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
-    TestRobot.run(robotKeyPresses);
-    // assertEquals('a', binding.editor.editor.getText());
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 1
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
+  }
+
+  void testllMovesTwoSpacesForwardInNormalMode() {
+    setupShell();
+
+    String robotKeys = 'i t h i s space i s space a space t e s t escape';
+    robotKeys += ' h' * 15 
+    robotKeys += ' l l'
+
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 2
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
   }
 }
