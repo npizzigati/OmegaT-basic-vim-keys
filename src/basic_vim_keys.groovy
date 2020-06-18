@@ -121,12 +121,31 @@ class Mode {
 
 class NormalMode extends Mode {
 
+  Map<String, String> remaps
+  Map<String, String> remapCandidates
+
   NormalMode(KeyManager manager) {
     super(manager);
+
+    // Temporary: put remaps into remaps map
+    // These will eventually be entered by the user
+    remaps = [a: 'b', b: 'c']
   }
 
   void process(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
+
+    // Handle remaps
+    // remapCandidates = remaps.findAll { k, v ->
+    //   // key.startsWith(keyChar)
+    // }
+
+    // remaps.each { k, v ->
+    //   if (keyChar == k) {
+    //     keyChar = v
+    //   }
+    // }
+
     switch (keyChar) {
       case 'i':
         manager.switchTo(ModeID.INSERT);
@@ -143,16 +162,84 @@ class NormalMode extends Mode {
 
 class InsertMode extends Mode {
 
+  Map<String, String> remaps;
+  Map<String, String> remapCandidates;
+  List<Character> accumulatedKeys;
+  String remapMatch;
+  List<Character> redispatchQueue;
+
   InsertMode(KeyManager manager) {
     super(manager);
+    resetAccumulatedKeys();
+
+    // Temporary: put remaps into remaps map
+    // These will eventually be entered by the user
+    remaps = [ab: 'ba', bc: 'cb'];
+    resetRemapCandidates();
+    redispatchQueue = [];
+  }
+
+  void resetRemapCandidates() {
+    remapCandidates = [:];
+  }
+
+  void resetAccumulatedKeys() {
+    accumulatedKeys = [];
   }
 
   void process(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
-    if ((int)keyChar == 27) {
+    if (redispatchQueue) {
+      println "Executing redispatchQueue: $redispatchQueue"
+      execute(stroke);
+      // redispatchQueue just acts as a counter here.
+      redispatchQueue.pop()
+      return;
+    }
+
+    // if (!remapMatch) {
+      accumulatedKeys = accumulatedKeys << keyChar;
+      remapCandidates = findRemapCandidates();
+    // }
+
+    // May have to use array to handle special characters;
+    println "accumulatedKeys: $accumulatedKeys"
+    println "possible remaps: $remapCandidates";
+
+    // if ((remapCandidates) && (!remapMatch)) {
+    if (remapCandidates) {
+      remapMatch = remaps[accumulatedKeys.join()]
+      if (remapMatch) {
+        resetAccumulatedKeys();
+        redispatchQueue = remapMatch.split('').toList(); 
+        manager.batchRedispatchKeys(redispatchQueue.clone());
+      }
+      return;
+
+    }
+
+    // Send accumulated keys for redispatch when no noremap match found
+    // if (accumulatedKeys) {
+      redispatchQueue = accumulatedKeys;
+      manager.batchRedispatchKeys(redispatchQueue.clone());
+      resetAccumulatedKeys();
+    // }
+  }
+
+  void execute(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
+
+    if ((int)keyChar == KeyEvent.VK_ESCAPE) {
       manager.switchTo(ModeID.NORMAL)
     } else {
       manager.redispatchEvent(stroke.keyTyped);
+    }
+  }
+
+  Map<String, String> findRemapCandidates() {
+    String joinedAccumulatedKeys = accumulatedKeys.join();
+    remaps.findAll { k, v ->
+      k.startsWith(joinedAccumulatedKeys);
     }
   }
 }
@@ -199,11 +286,13 @@ class KeyManager {
     }
   }
 
-  void route(Stroke stroke) {
+  void route(Stroke stroke) throws InterruptException {
     // put stroke in some kind of history?
 
+    keyChar = stroke.keyTyped.keyChar;
+
     if (keyChar == 'q') {
-      System.exit(0);
+      throw new InterruptException();
     }
 
     if (isNotVimKey(keyChar)) {
@@ -248,6 +337,22 @@ class KeyManager {
     editor.setCaretPosition(caretPosition);
   }
 
+  void batchRedispatchKeys(List<Character> redispatchQueue) {
+    redispatchQueue.each {
+      KeyEvent event = createEvent(it as char);
+      redispatchEvent(event);
+    }
+  }
+
+  KeyEvent createEvent(char keyChar) {
+    int id = KeyEvent.KEY_TYPED;
+    long when = System.currentTimeMillis();
+    int modifiers = 0;
+    int keyCode = 0;
+    return new KeyEvent(pane, id, when, modifiers,
+                        keyCode, keyChar);
+  }
+
   void redispatchEvent(KeyEvent event) {
     pane.dispatchEvent(new KeyEvent(pane, event.getID(),
                                     event.getWhen(),
@@ -257,7 +362,7 @@ class KeyManager {
   }
 }
 
-if (binding.hasVariable('testing')) { 
+if (binding.hasVariable('testing')) {
   editor = new EditorController();
   testWindow.setup(editor.editor);
 }
