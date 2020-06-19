@@ -59,7 +59,7 @@ class Listener implements KeyListener {
     }
 
     lastKeyPressed = event;
-    println "Key press event: "
+    println "Key press event: $event.keyChar"
     print event.getKeyCode();
 
     event.consume();
@@ -172,8 +172,7 @@ class InsertMode extends Mode {
   String remapMatch;
   List<Character> redispatchQueue;
   Long lastKeypressTime;
-  boolean timeout;
-  Thread timeoutThread;
+  Thread remapTimeoutThread;
 
   InsertMode(KeyManager manager) {
     super(manager);
@@ -184,13 +183,30 @@ class InsertMode extends Mode {
     remaps = [ab: 'ba', bc: 'cb'];
     resetRemapCandidates();
     redispatchQueue = [];
-    timeout = false;
   }
 
-  void invokeLaterRedispatch(List redispatchQueue) {
+  void runRemapTimeoutThread() {
+    lastKeypressTime = System.currentTimeMillis();
+    remapTimeoutThread = new Thread() {
+      long cutoff = lastKeypressTime + 900;
+      public void run() {
+        while (System.currentTimeMillis() < cutoff) {
+          if (Thread.interrupted()) return;
+        }
+
+        println 'Timeout'
+        redispatchQueue = accumulatedKeys.toList();
+        invokeLaterRedispatch(redispatchQueue.clone());
+        resetAccumulatedKeys();
+      }
+    }
+    remapTimeoutThread.start();
+  }
+
+  void invokeLaterRedispatch(List queue) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        manager.batchRedispatchKeys(redispatchQueue);
+        manager.batchRedispatchKeys(queue);
       }
     });
   }
@@ -206,17 +222,15 @@ class InsertMode extends Mode {
   void process(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
 
-    if (timeoutThread && (timeout == false)) {
-      timeoutThread.interrupt();
-      timeoutThread = null; //is this line necessary?
+    if (redispatchQueue) {
+      execute(stroke);
+      redispatchQueue.pop();
+      return;
     }
 
-    if (redispatchQueue) {
-      println "Executing redispatchQueue: $redispatchQueue"
-      execute(stroke);
-      // redispatchQueue just acts as a counter here.
-      redispatchQueue.pop()
-      return;
+    if (remapTimeoutThread && remapTimeoutThread.isAlive()) {
+      println "Interrupting remapTimeout"
+      remapTimeoutThread.interrupt();
     }
 
     accumulatedKeys = accumulatedKeys << keyChar;
@@ -224,32 +238,13 @@ class InsertMode extends Mode {
     remapCandidates = findRemapCandidates();
 
     if (remapCandidates) {
-      lastKeypressTime = System.currentTimeMillis();
+      println "remapCandidates: $remapCandidates"
+      runRemapTimeoutThread();
 
-      timeoutThread = new Thread() {
-        long cutoff = lastKeypressTime + 900;
-        public void run() {
-          timeout = false;
-          println "Waiting for next key";
-          while (System.currentTimeMillis() < cutoff) {
-            if (Thread.interrupted()) return;
-          }
-          println 'Timeout';
-          timeout = true;
-
-          redispatchQueue = accumulatedKeys.toList();
-          resetAccumulatedKeys();
-          // Must invoke Swing modification inside Swing thread
-          invokeLaterRedispatch(redispatchQueue.clone());
-        }
-      }
-      timeoutThread.start();
-    }
-
-    if (remapCandidates) {
       remapMatch = remaps[accumulatedKeys.join()];
+
       if (remapMatch) {
-        println 'Remap match'
+        println "remapMatch: $remapMatch"
         resetAccumulatedKeys();
         redispatchQueue = remapMatch.split('').toList(); 
         manager.batchRedispatchKeys(redispatchQueue.clone());
@@ -257,7 +252,8 @@ class InsertMode extends Mode {
       return;
     }
 
-    // Send accumulated keys for redispatch when no noremap match found
+    // Send accumulated keys for redispatch when no candidates found
+    println "No candidates" 
     redispatchQueue = accumulatedKeys;
     manager.batchRedispatchKeys(redispatchQueue.clone());
     resetAccumulatedKeys();
@@ -374,9 +370,10 @@ class KeyManager {
     editor.setCaretPosition(caretPosition);
   }
 
-  void batchRedispatchKeys(List redispatchQueue) {
-    redispatchQueue.each {
+  void batchRedispatchKeys(List queue) {
+    queue.each {
       KeyEvent event = createEvent(it as char);
+      Thread.sleep(1); // Prevent KeyEvents being created with the same time
       redispatchEvent(event);
     }
   }
