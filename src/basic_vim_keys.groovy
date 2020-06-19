@@ -9,6 +9,7 @@ import javax.swing.JFrame;
 import javax.swing.JEditorPane;
 import javax.swing.PopupFactory;
 import javax.swing.Popup;
+import javax.swing.SwingUtilities;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
@@ -117,6 +118,9 @@ class Mode {
 
   void process(Stroke stroke) {
   }
+
+  void execute(Stroke stroke) {
+  }
 }
 
 class NormalMode extends Mode {
@@ -167,6 +171,9 @@ class InsertMode extends Mode {
   List<Character> accumulatedKeys;
   String remapMatch;
   List<Character> redispatchQueue;
+  Long lastKeypressTime;
+  boolean timeout;
+  Thread timeoutThread;
 
   InsertMode(KeyManager manager) {
     super(manager);
@@ -177,6 +184,15 @@ class InsertMode extends Mode {
     remaps = [ab: 'ba', bc: 'cb'];
     resetRemapCandidates();
     redispatchQueue = [];
+    timeout = false;
+  }
+
+  void invokeLaterRedispatch(List redispatchQueue) {
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        manager.batchRedispatchKeys(redispatchQueue);
+      }
+    });
   }
 
   void resetRemapCandidates() {
@@ -189,6 +205,12 @@ class InsertMode extends Mode {
 
   void process(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
+
+    if (timeoutThread && (timeout == false)) {
+      timeoutThread.interrupt();
+      timeoutThread = null; //is this line necessary?
+    }
+
     if (redispatchQueue) {
       println "Executing redispatchQueue: $redispatchQueue"
       execute(stroke);
@@ -197,33 +219,48 @@ class InsertMode extends Mode {
       return;
     }
 
-    // if (!remapMatch) {
-      accumulatedKeys = accumulatedKeys << keyChar;
-      remapCandidates = findRemapCandidates();
-    // }
+    accumulatedKeys = accumulatedKeys << keyChar;
 
-    // May have to use array to handle special characters;
-    println "accumulatedKeys: $accumulatedKeys"
-    println "possible remaps: $remapCandidates";
+    remapCandidates = findRemapCandidates();
 
-    // if ((remapCandidates) && (!remapMatch)) {
     if (remapCandidates) {
-      remapMatch = remaps[accumulatedKeys.join()]
+      lastKeypressTime = System.currentTimeMillis();
+
+      timeoutThread = new Thread() {
+        long cutoff = lastKeypressTime + 900;
+        public void run() {
+          timeout = false;
+          println "Waiting for next key";
+          while (System.currentTimeMillis() < cutoff) {
+            if (Thread.interrupted()) return;
+          }
+          println 'Timeout';
+          timeout = true;
+
+          redispatchQueue = accumulatedKeys.toList();
+          resetAccumulatedKeys();
+          // Must invoke Swing modification inside Swing thread
+          invokeLaterRedispatch(redispatchQueue.clone());
+        }
+      }
+      timeoutThread.start();
+    }
+
+    if (remapCandidates) {
+      remapMatch = remaps[accumulatedKeys.join()];
       if (remapMatch) {
+        println 'Remap match'
         resetAccumulatedKeys();
         redispatchQueue = remapMatch.split('').toList(); 
         manager.batchRedispatchKeys(redispatchQueue.clone());
       }
       return;
-
     }
 
     // Send accumulated keys for redispatch when no noremap match found
-    // if (accumulatedKeys) {
-      redispatchQueue = accumulatedKeys;
-      manager.batchRedispatchKeys(redispatchQueue.clone());
-      resetAccumulatedKeys();
-    // }
+    redispatchQueue = accumulatedKeys;
+    manager.batchRedispatchKeys(redispatchQueue.clone());
+    resetAccumulatedKeys();
   }
 
   void execute(Stroke stroke) {
@@ -337,7 +374,7 @@ class KeyManager {
     editor.setCaretPosition(caretPosition);
   }
 
-  void batchRedispatchKeys(List<Character> redispatchQueue) {
+  void batchRedispatchKeys(List redispatchQueue) {
     redispatchQueue.each {
       KeyEvent event = createEvent(it as char);
       redispatchEvent(event);
