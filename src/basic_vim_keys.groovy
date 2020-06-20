@@ -173,6 +173,7 @@ class InsertMode extends Mode {
   List<Character> redispatchQueue;
   Long lastKeypressTime;
   Thread remapTimeoutThread;
+  static final int REMAP_TIMEOUT = 900;
 
   InsertMode(KeyManager manager) {
     super(manager);
@@ -185,38 +186,19 @@ class InsertMode extends Mode {
     redispatchQueue = [];
   }
 
-  void runRemapTimeoutThread() {
-    lastKeypressTime = System.currentTimeMillis();
-    remapTimeoutThread = new Thread() {
-      long cutoff = lastKeypressTime + 900;
-      public void run() {
-        while (System.currentTimeMillis() < cutoff) {
-          if (Thread.interrupted()) return;
-        }
+  class RemapTimeoutThread extends Thread {
+    long cutoff = lastKeypressTime + REMAP_TIMEOUT;
 
-        println 'Timeout'
-        redispatchQueue = accumulatedKeys.toList();
-        invokeLaterRedispatch(redispatchQueue.clone());
-        resetAccumulatedKeys();
+    public void run() {
+      while (System.currentTimeMillis() < cutoff) {
+        if (Thread.interrupted()) return;
       }
+
+      println 'Timeout'
+      redispatchQueue = accumulatedKeys.toList();
+      invokeLaterRedispatch(redispatchQueue.clone());
+      resetAccumulatedKeys();
     }
-    remapTimeoutThread.start();
-  }
-
-  void invokeLaterRedispatch(List queue) {
-    SwingUtilities.invokeLater(new Runnable() {
-      public void run() {
-        manager.batchRedispatchKeys(queue);
-      }
-    });
-  }
-
-  void resetRemapCandidates() {
-    remapCandidates = [:];
-  }
-
-  void resetAccumulatedKeys() {
-    accumulatedKeys = [];
   }
 
   void process(Stroke stroke) {
@@ -228,35 +210,56 @@ class InsertMode extends Mode {
       return;
     }
 
-    if (remapTimeoutThread && remapTimeoutThread.isAlive()) {
-      println "Interrupting remapTimeout"
+    if (isRemapTimeoutThreadRunning())
       remapTimeoutThread.interrupt();
-    }
 
     accumulatedKeys = accumulatedKeys << keyChar;
-
     remapCandidates = findRemapCandidates();
 
     if (remapCandidates) {
-      println "remapCandidates: $remapCandidates"
-      runRemapTimeoutThread();
+      handlePossibleRemapMatch();
+    } else {
+      refireNonRemappedKeys();
+    }
+  }
 
+  void runRemapTimeoutThread() {
+    lastKeypressTime = System.currentTimeMillis();
+    remapTimeoutThread = new RemapTimeoutThread();
+    remapTimeoutThread.start();
+  }
+
+  void invokeLaterRedispatch(List queue) {
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        manager.batchRedispatchKeys(queue);
+      }
+    });
+  }
+
+  void handlePossibleRemapMatch() {
+      runRemapTimeoutThread();
       remapMatch = remaps[accumulatedKeys.join()];
 
       if (remapMatch) {
-        println "remapMatch: $remapMatch"
         resetAccumulatedKeys();
-        redispatchQueue = remapMatch.split('').toList(); 
+        redispatchQueue = remapMatch.split('').toList();
         manager.batchRedispatchKeys(redispatchQueue.clone());
       }
-      return;
-    }
+  }
 
-    // Send accumulated keys for redispatch when no candidates found
-    println "No candidates" 
+  void refireNonRemappedKeys() {
     redispatchQueue = accumulatedKeys;
     manager.batchRedispatchKeys(redispatchQueue.clone());
     resetAccumulatedKeys();
+  }
+
+  void resetRemapCandidates() {
+    remapCandidates = [:];
+  }
+
+  void resetAccumulatedKeys() {
+    accumulatedKeys = [];
   }
 
   void execute(Stroke stroke) {
@@ -274,6 +277,10 @@ class InsertMode extends Mode {
     remaps.findAll { k, v ->
       k.startsWith(joinedAccumulatedKeys);
     }
+  }
+
+  boolean isRemapTimeoutThreadRunning() {
+    remapTimeoutThread && remapTimeoutThread.isAlive()
   }
 }
 
