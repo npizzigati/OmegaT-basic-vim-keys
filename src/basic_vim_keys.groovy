@@ -104,68 +104,9 @@ class Stroke {
 
 }
 
-class Mode {
+abstract class Mode {
 
   KeyManager manager;
-
-  enum ModeID {
-    NORMAL, INSERT, VISUAL;
-  }
-
-  Mode(KeyManager manager) {
-    this.manager = manager;
-  }
-
-  void process(Stroke stroke) {
-  }
-
-  void execute(Stroke stroke) {
-  }
-}
-
-class NormalMode extends Mode {
-
-  Map<String, String> remaps
-  Map<String, String> remapCandidates
-
-  NormalMode(KeyManager manager) {
-    super(manager);
-
-    // Temporary: put remaps into remaps map
-    // These will eventually be entered by the user
-    remaps = [a: 'b', b: 'c']
-  }
-
-  void process(Stroke stroke) {
-    char keyChar = stroke.keyTyped.keyChar;
-
-    // Handle remaps
-    // remapCandidates = remaps.findAll { k, v ->
-    //   // key.startsWith(keyChar)
-    // }
-
-    // remaps.each { k, v ->
-    //   if (keyChar == k) {
-    //     keyChar = v
-    //   }
-    // }
-
-    switch (keyChar) {
-      case 'i':
-        manager.switchTo(ModeID.INSERT);
-        break;
-      case 'h':
-        manager.moveCaret(-1)
-        break;
-      case 'l':
-        manager.moveCaret(1)
-        break;
-    }
-  }
-}
-
-class InsertMode extends Mode {
-
   Map<String, String> remaps;
   Map<String, String> remapCandidates;
   List<Character> accumulatedKeys;
@@ -175,13 +116,16 @@ class InsertMode extends Mode {
   Thread remapTimeoutThread;
   static final int REMAP_TIMEOUT = 900;
 
-  InsertMode(KeyManager manager) {
-    super(manager);
+  enum ModeID {
+    NORMAL, INSERT, VISUAL;
+  }
+
+  Mode(KeyManager manager) {
+    this.manager = manager;
     resetAccumulatedKeys();
 
     // Temporary: put remaps into remaps map
     // These will eventually be entered by the user
-    remaps = [ab: 'ba', bc: 'cb'];
     resetRemapCandidates();
     redispatchQueue = [];
   }
@@ -239,8 +183,8 @@ class InsertMode extends Mode {
 
   void handlePossibleRemapMatch() {
       runRemapTimeoutThread();
-      remapMatch = remaps[accumulatedKeys.join()];
 
+      remapMatch = remaps[accumulatedKeys.join()];
       if (remapMatch) {
         resetAccumulatedKeys();
         redispatchQueue = remapMatch.split('').toList();
@@ -262,16 +206,6 @@ class InsertMode extends Mode {
     accumulatedKeys = [];
   }
 
-  void execute(Stroke stroke) {
-    char keyChar = stroke.keyTyped.keyChar;
-
-    if ((int)keyChar == KeyEvent.VK_ESCAPE) {
-      manager.switchTo(ModeID.NORMAL)
-    } else {
-      manager.redispatchEvent(stroke.keyTyped);
-    }
-  }
-
   Map<String, String> findRemapCandidates() {
     String joinedAccumulatedKeys = accumulatedKeys.join();
     remaps.findAll { k, v ->
@@ -282,11 +216,58 @@ class InsertMode extends Mode {
   boolean isRemapTimeoutThreadRunning() {
     remapTimeoutThread && remapTimeoutThread.isAlive()
   }
+
+  abstract void execute(Stroke stroke);
+}
+
+class NormalMode extends Mode {
+
+  NormalMode(KeyManager manager) {
+    super(manager);
+  }
+
+  void execute(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
+
+    switch (keyChar) {
+      case 'i':
+        manager.switchTo(ModeID.INSERT);
+        break;
+      case 'h':
+        manager.moveCaret(-1)
+        break;
+      case 'l':
+        manager.moveCaret(1)
+        break;
+    }
+  }
+}
+
+class InsertMode extends Mode {
+
+  InsertMode(KeyManager manager) {
+    super(manager);
+    remaps = [ab: 'ba', bc: 'cb'];
+  }
+
+  void execute(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
+
+    if ((int)keyChar == KeyEvent.VK_ESCAPE) {
+      manager.switchTo(ModeID.NORMAL)
+    } else {
+      manager.redispatchEvent(stroke.keyTyped);
+    }
+  }
 }
 
 class VisualMode extends Mode {
   VisualMode(KeyManager manager) {
     super(manager);
+  }
+
+  void execute(Stroke stroke) {
+    char keyChar = stroke.keyTyped.keyChar;
   }
 }
 
@@ -410,3 +391,4 @@ if (binding.hasVariable('testing')) {
 
 println binding.variables
 new Listener(editor, editor.editor);
+
