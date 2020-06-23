@@ -116,7 +116,6 @@ abstract class Mode {
   List<Character> redispatchQueue;
   Long lastKeypressTime;
   Thread remapTimeoutThread;
-  static final int REMAP_TIMEOUT = 900;
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
 
   enum ModeID {
@@ -271,10 +270,11 @@ abstract class Mode {
 }
 
 class NormalMode extends Mode {
+  static final int REMAP_TIMEOUT = 1500;
 
   NormalMode(KeyManager manager) {
     super(manager);
-    userEnteredRemaps = ['ab': 'ba', 'bc': 'cb'];
+    userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
   }
 
@@ -296,16 +296,19 @@ class NormalMode extends Mode {
 }
 
 class InsertMode extends Mode {
+  static final int REMAP_TIMEOUT = 20; // In milliseconds
 
   InsertMode(KeyManager manager) {
     super(manager);
-    userEnteredRemaps = ['ab': 'ba', 'bc': 'cb', 'ei': '<Esc>'];
+    userEnteredRemaps = ['ei': '<Esc>', 'ie': '<Esc>'];
     remaps = tokenizeUserEnteredRemaps();
   }
 
   void execute(Stroke stroke) {
     if ((int)stroke.keyTyped.keyChar == KeyEvent.VK_ESCAPE) {
       manager.switchTo(ModeID.NORMAL)
+    } else if ((int)stroke.keyPressed.keyChar == KeyEvent.VK_BACK_SPACE) {
+      manager.redispatchEvent(stroke.keyPressed);
     } else {
       manager.redispatchEvent(stroke.keyTyped);
     }
@@ -313,9 +316,10 @@ class InsertMode extends Mode {
 }
 
 class VisualMode extends Mode {
+ 
   VisualMode(KeyManager manager) {
     super(manager);
-    userEnteredRemaps = ['ab': 'ba', 'bc': 'cb'];
+    userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
   }
 
@@ -438,8 +442,6 @@ class KeyManager {
     return new KeyEvent(pane, id, when, modifiers,
                         keyCode, keyChar);
   }
-
-
 
   void redispatchEvent(KeyEvent event) {
     pane.dispatchEvent(new KeyEvent(pane, event.getID(),
