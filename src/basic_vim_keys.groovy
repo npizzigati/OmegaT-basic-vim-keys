@@ -271,6 +271,7 @@ abstract class Mode {
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1500;
+  SubMode currentSubMode;
 
   NormalMode(KeyManager manager) {
     super(manager);
@@ -325,6 +326,18 @@ class VisualMode extends Mode {
 
   void execute(Stroke stroke) {
     char keyChar = stroke.keyTyped.keyChar;
+  }
+}
+
+class SubMode {
+  
+}
+
+class OperatorPendingMode extends Submode {
+  void process(Stroke stroke) {
+    if((1..9).contains(stroke.keyTyped.keyChar)) {
+      // Do something;
+    }
   }
 }
 
