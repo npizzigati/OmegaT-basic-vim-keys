@@ -54,7 +54,7 @@ class Listener implements KeyListener {
 
   void keyPressed(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
-      return; //This will pass on event to pane
+      return; //This will allow event to pass on to pane
     }
 
     lastKeyPressed = event;
