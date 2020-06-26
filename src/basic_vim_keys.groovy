@@ -271,7 +271,7 @@ abstract class Mode {
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1500;
-  SubMode currentSubMode;
+  Submode currentSubmode;
 
   NormalMode(KeyManager manager) {
     super(manager);
@@ -329,7 +329,7 @@ class VisualMode extends Mode {
   }
 }
 
-class SubMode {
+class Submode {
   
 }
 
