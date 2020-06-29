@@ -105,7 +105,6 @@ class Stroke {
 }
 
 abstract class Mode {
-
   KeyManager manager;
   // userEnteredRemaps is temporarily -- these will be retrieved
   // from user or configuration file
@@ -144,6 +143,7 @@ abstract class Mode {
     }
   }
 
+
   void process(Stroke stroke) {
     int key;
     int keyChar;
@@ -155,8 +155,6 @@ abstract class Mode {
       return;
     }
 
-    println "remaps: $remaps"
-    
     if (isRemapTimeoutThreadRunning())
       remapTimeoutThread.interrupt();
 
@@ -168,10 +166,7 @@ abstract class Mode {
     }
     
     accumulatedKeys = accumulatedKeys << key;
-
-    println "accumulatedKeys: $accumulatedKeys";
     remapCandidates = findRemapCandidates();
-    println "remapCandidates: $remapCandidates"
 
     if (remapCandidates) {
       handlePossibleRemapMatch();
@@ -199,7 +194,6 @@ abstract class Mode {
 
       def remapMatch = remaps[accumulatedKeys];
       if (remapMatch) {
-        println "remap found";
         resetAccumulatedKeys();
         resetRemapCandidates();
         remapTimeoutThread.interrupt();
@@ -223,7 +217,6 @@ abstract class Mode {
     userEnteredRemaps.each { k, v ->
       tokenizedRemaps[tokenizeRemapString(k)] = tokenizeRemapString(v); 
     }
-    println "tokenizedRemaps: $tokenizedRemaps";
     return tokenizedRemaps;
   }
   
@@ -238,7 +231,6 @@ abstract class Mode {
   }
 
   void refireNonRemappedKeys() {
-    println "refiring nonremapped key";
     redispatchQueue = accumulatedKeys;
     manager.batchRedispatchKeys(redispatchQueue.clone());
     resetAccumulatedKeys();
@@ -250,7 +242,6 @@ abstract class Mode {
 
   void resetAccumulatedKeys() {
     accumulatedKeys = [];
-    println "accumulatedKeys reset.";
   }
 
   Map findRemapCandidates() {
@@ -270,30 +261,74 @@ abstract class Mode {
 }
 
 class NormalMode extends Mode {
-  static final int REMAP_TIMEOUT = 1500;
-  Submode currentSubmode;
+  static final int REMAP_TIMEOUT = 1000;
+  static final int CNT_RANGE_START = (int)'1'; 
+  static final int CNT_RANGE_END = (int)'9';
+  OperatorPendingMode operatorPendingMode;
+  String count;
+  int keyChar;
+
 
   NormalMode(KeyManager manager) {
     super(manager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
+    resetCount();
+    operatorPendingMode = new OperatorPendingMode();
   }
 
   void execute(Stroke stroke) {
-    char keyChar = stroke.keyTyped.keyChar;
-
+    keyChar = stroke.keyTyped.keyChar
     switch (keyChar) {
-      case 'i':
-        manager.switchTo(ModeID.INSERT);
+      case (int)'i':
+        manager.switchTo(Mode.ModeID.INSERT);
+        resetCount();
         break;
-      case 'h':
-        manager.moveCaret(-1)
+      case (int)'h':
+        int positionChange = count ? -(count.toInteger()) : -1;
+        manager.moveCaret(positionChange);
+        resetCount();
         break;
-      case 'l':
-        manager.moveCaret(1)
+      case (int)'l':
+        int positionChange = count ? count.toInteger() : 1;
+        manager.moveCaret(positionChange);
+        resetCount();
+        break;
+      case (int)'w':
+        int numOfWords = count ? count.toInteger() : 1;
+        manager.moveByWord(numOfWords)
+        resetCount();
+        break;
+      case (int)'0':
+        if (count == "") {
+          manager.moveToLineStart();
+        } else {
+          count = count + (char)keyChar;
+        }
+        break;
+      case (int)'$':
+        manager.moveToLineEnd();
+        break;
+      case (CNT_RANGE_START..CNT_RANGE_END):
+        println "countchar: $keyChar"
+        count = count + (char)keyChar;
+        println "count: $count";
         break;
     }
   }
+
+  void resetCount() {
+    count = "";
+  }
+
+  class OperatorPendingMode {
+    void execute(Stroke stroke) {
+      if((1..9).contains(stroke.keyTyped.keyChar)) {
+        // Do something;
+      }
+    }
+  }
+
 }
 
 class InsertMode extends Mode {
@@ -325,24 +360,26 @@ class VisualMode extends Mode {
   }
 
   void execute(Stroke stroke) {
-    char keyChar = stroke.keyTyped.keyChar;
-  }
-}
-
-class Submode {
-  
-}
-
-class OperatorPendingMode extends Submode {
-  void process(Stroke stroke) {
-    if((1..9).contains(stroke.keyTyped.keyChar)) {
-      // Do something;
+    switch (keyChar) {
+      case 'i':
+        manager.switchTo(Mode.ModeID.INSERT);
+        break;
+      case 'h':
+        manager.moveCaret(-1)
+        break;
+      case 'l':
+        manager.moveCaret(1)
+        break;
+      case ('1'..'9'):
+        // Store count in some sort of instance variable to
+        // be used in operator mode
+        break;
     }
   }
 }
 
-class KeyManager {
 
+class KeyManager {
   Mode normalMode;
   Mode insertMode;
   Mode visualMode;
@@ -362,11 +399,11 @@ class KeyManager {
 
   void switchTo(modeID) {
     switch(modeID) {
-      case modeID.NORMAL:
+      case modeID.NORMAL: // Can this just be NORMAL?
         currentMode = normalMode;
         println('Switching to normal mode')
         break;
-      case modeID.INSERT:
+      case modeID.INSERT: // can this just be INSERT?
         currentMode = insertMode;
         println('Switching to insert mode')
         break;
@@ -391,25 +428,20 @@ class KeyManager {
     } else {
       currentMode.process(stroke);
     }
-    // } else if((int)keyChar == 27) {
-    //   enterNormalMode();
-    //   println "Entering normal mode";
-    // } else if(keyChar == 't') {
-    //   testSelection();
-    //   println "testing selection";
-    // } else {
-    //   redispatchEvent(stroke.keyTyped);
-    // }
   }
 
   // The delete key doesn't seem to show up as CHAR_UNDEFINED, so
   // we check for it separately
   boolean isNotVimKey(char keyChar) {
-    (keyChar == KeyEvent.CHAR_UNDEFINED) || isDelete(keyChar);
+    isUndefined(keyChar) || isDelete(keyChar);
   }
 
   boolean isDelete(char keyChar) {
     (int)keyChar == 127;
+  }
+
+  boolean isUndefined(char keyChar) {
+    keyChar == KeyEvent.CHAR_UNDEFINED;
   }
 
   void testSelection() {
@@ -420,10 +452,55 @@ class KeyManager {
     editor.setCaretPosition(caret);
   }
 
+  void moveByWord(int numOfWords) {
+    // TODO: Fix stop on accented characters
+    //       Should stop on puntuation (right?)
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+
+    String nonWordChar = '(\\W)'
+    Pattern pattern = Pattern.compile(nonWordChar);
+    Matcher matcher = pattern.matcher(text);
+    List matchIndices = [];
+    while (matcher.find()) {
+      matchIndices << matcher.start();
+    }
+    List candidates = matchIndices.findAll { it > currentPos };
+    int newPos = (candidates[numOfWords - 1]) ? (candidates[numOfWords - 1]) + 1
+                                              : currentPos;
+
+    // This repeats in several methods --> extract to another method
+    // Include logic to see if final index if within bounds  
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
   void moveCaret(int positionChange) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(currentPos +
-                                                            positionChange);
+    int newPos = currentPos + positionChange; 
+    int lineLength = editor.getCurrentTranslation().length(); 
+
+    println "\nnewPos: $newPos\n";
+    if (newPos < 0) {
+      newPos = 0;
+    } else if (newPos > lineLength) {
+      newPos = lineLength;
+    }
+
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  void moveToLineStart() {
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(0);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  void moveToLineEnd() {
+    int endCaretPosition = editor.getCurrentTranslation().length();
+    println "\nsegment length: $endCaretPosition\n";
+
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(endCaretPosition);
     editor.setCaretPosition(caretPosition);
   }
 

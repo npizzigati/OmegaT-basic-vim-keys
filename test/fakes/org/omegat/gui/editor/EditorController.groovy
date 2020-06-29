@@ -17,6 +17,10 @@ public class EditorController implements IEditor {
     return editor.getCaretPosition();
   }
 
+  public String getCurrentTranslation() {
+    return editor.getText();
+  }
+
   // Need to have another method signature for 2 inputs
   // (to mark selection)
   public void setCaretPosition(CaretPosition pos) {
