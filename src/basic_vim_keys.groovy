@@ -455,6 +455,8 @@ class KeyManager {
   void moveByWord(int numOfWords) {
     // TODO: Fix stop on accented characters
     //       Should stop on puntuation (right?)
+    //       When number of words goes beyond end, caret should
+    //       go to end
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
 
