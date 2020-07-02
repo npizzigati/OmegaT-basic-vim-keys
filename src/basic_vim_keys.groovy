@@ -267,6 +267,10 @@ class NormalMode extends Mode {
   OperatorPendingMode operatorPendingMode;
   String count;
   int keyChar;
+  enum ToOrTill {
+    NONE, TO, TILL, TO_BACK, TILL_BACK;
+  }
+  ToOrTill toOrTill;
 
 
   NormalMode(KeyManager manager) {
@@ -275,14 +279,40 @@ class NormalMode extends Mode {
     remaps = tokenizeUserEnteredRemaps();
     resetCount();
     operatorPendingMode = new OperatorPendingMode();
+    toOrTill = ToOrTill.NONE;
+  }
+
+  boolean toOrTillPending() {
+    toOrTill != ToOrTill.NONE;
+  }
+
+  void executeToOrTill(keyChar) {
+    int number = count ? count.toInteger() : 1;
+    switch (toOrTill) {
+      case ToOrTill.TO:
+        manager.goForwardToChar(keyChar, number);
+        break;
+    }
+    toOrTill = ToOrTill.NONE;
+    resetCount();
   }
 
   void execute(Stroke stroke) {
     keyChar = stroke.keyTyped.keyChar
+    if (toOrTillPending()) {
+      executeToOrTill(keyChar);
+      return;
+    }
     switch (keyChar) {
       case (int)'i':
         manager.switchTo(Mode.ModeID.INSERT);
         resetCount();
+        break;
+      case (int)'t':
+        toOrTill = ToOrTill.TILL
+        break;
+      case (int)'f':
+        toOrTill = ToOrTill.TO
         break;
       case (int)'h':
         int positionChange = count ? -(count.toInteger()) : -1;
@@ -475,6 +505,37 @@ class KeyManager {
     // Include logic to see if final index if within bounds  
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
     editor.setCaretPosition(caretPosition);
+  }
+
+  boolean stopPositionIsSpace(String text, int stopPos, int length) {
+    int index = (stopPos == length) ? stopPos - 1 : stopPos;
+    (text[index] ==~ /\s/);
+  }
+
+  void goForwardToChar(int keyChar, int number) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = (char)keyChar
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it > currentPos };
+    
+    int newPos = (candidates[number - 1]) ?: currentPos;
+    // This repeats in several methods --> extract to another method
+    // Include logic to see if final index if within bounds  
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  List getMatches(String text, String candidateRegex) {
+    Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = [];
+
+    while (matcher.find()) {
+      matches << matcher.start();
+    }
+    return matches;
   }
 
   void moveCaret(int positionChange) {
