@@ -482,24 +482,24 @@ class KeyManager {
     editor.setCaretPosition(caret);
   }
 
-  void moveByWord(int numOfWords) {
+  void moveByWord(int number) {
     // TODO: Fix stop on accented characters
     //       Should stop on puntuation (right?)
     //       When number of words goes beyond end, caret should
     //       go to end
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
+    int length = text.length();
 
-    String nonWordChar = '(\\W)'
-    Pattern pattern = Pattern.compile(nonWordChar);
+    String candidateRegex = '(?=[^\\p{L}])(?=\\S)|((?<=[^\\p{L}])\\p{L})'
+    Pattern pattern = Pattern.compile(candidateRegex);
     Matcher matcher = pattern.matcher(text);
-    List matchIndices = [];
-    while (matcher.find()) {
-      matchIndices << matcher.start();
-    }
-    List candidates = matchIndices.findAll { it > currentPos };
-    int newPos = (candidates[numOfWords - 1]) ? (candidates[numOfWords - 1]) + 1
-                                              : currentPos;
+    List matches = getMatches(text, candidateRegex);
+
+    List candidates = matches.findAll { it > currentPos };
+    int endIndex = (!!candidates) ? candidates[-1] : currentPos  
+    int newPos = (candidates[number - 1]) ?: endIndex;
+
 
     // This repeats in several methods --> extract to another method
     // Include logic to see if final index if within bounds  
