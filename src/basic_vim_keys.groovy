@@ -453,14 +453,26 @@ class KeyManager {
       throw new InterruptException();
     }
 
-    if (isNotVimKey(keyChar)) {
+    if (ctrlPressed(stroke)) {
+      println "ctrlPressed";
+    }
+
+    // Immediately redispatch all keys with ctrl modifier
+    // as well as all keys that are not used in vim
+    // I may want to change this to be able to use ctrl key in vim 
+    if ((isNotVimKey(keyChar)) || ctrlPressed(stroke)) {
       redispatchEvent(stroke.keyPressed);
     } else {
       currentMode.process(stroke);
     }
   }
 
-  // The delete key doesn't seem to show up as CHAR_UNDEFINED, so
+  boolean ctrlPressed(Stroke stroke) {
+    ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
+  } 
+
+
+  // The delete key doesn't show up as CHAR_UNDEFINED, so
   // we check for it separately
   boolean isNotVimKey(char keyChar) {
     isUndefined(keyChar) || isDelete(keyChar);
