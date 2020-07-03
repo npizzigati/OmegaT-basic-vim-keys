@@ -2,6 +2,7 @@ package org.omegat.gui.editor;
 
 import javax.swing.text.DefaultCaret;
 
+
 public class EditorController implements IEditor {
   // Note that "editor" in the declaration below is referring to
   // the pane inside the fake editor; OmegaT instantiates both as
@@ -19,6 +20,20 @@ public class EditorController implements IEditor {
 
   public String getCurrentTranslation() {
     return editor.getText();
+  }
+
+  public void replaceEditText(String replacement) {
+    editor.setText();
+  }
+
+  // I haven't tested this method
+  public void replacePartOfText(String replacement,
+                                int startIndex,
+                                int endIndex) {
+    String current_text = editor.getText();
+    String new_text = current_text[0..(startIndex - 1)] +
+                      replacement +
+                      current_text[(endIndex + 1)..-1];
   }
 
   // Need to have another method signature for 2 inputs
