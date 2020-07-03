@@ -3,6 +3,34 @@
  * @author: Nicholas Pizzigati
  */
 
+// TODO: When holding down h in normal mode, some h's  
+// appear not to be processed -- they are output to the
+// OmegaT editor pane. Update: this actually happens while
+// holding down any key in normal mode
+// FIXED: I fixed this by giving these immediately redispatched keys
+// a fake time a fraction of a second earlier than the original event...
+// Minor problems with the fix: architectural: pane is now a static variable
+// in KeyManager but an instance variable in Listener -- can I make it a
+// static variable in Listener, too, maybe along with editor?
+// Maybe get rid of the createEventWithFakeDelay function altogether and
+// Simply create another method in KeyManager for immediately redispatched
+// Keys, and include the fake delay there. This would also enable me to
+// customize the function I'm using for other (inoremap) events, to avoid
+// creating an event twice
+
+// Second potential problem: Are there more places where I need to redispatch
+// keys with fake delay?
+
+// Shift-F3 for change case does not get passed through
+
+// Compose key characters seem not to work -- do I need to let all modifiers
+// (except shift) through untouched, like ctrl?
+
+// TODO: Sometimes when in normal mode, I have to press i
+// twice to switch to normal mode.
+
+
+ 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
@@ -32,6 +60,7 @@ class Listener implements KeyListener {
   KeyEvent lastKeyTyped;
   KeyManager manager;
   Stroke stroke;
+  static final FAKE_REDISPATCH_DELAY = 50;
 
   Listener(EditorController editor,
            EditorTextArea3 pane) {
@@ -54,6 +83,7 @@ class Listener implements KeyListener {
 
   void keyPressed(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
+      println "redispatching event (keyChar: ${event.getKeyChar()})";
       return; //This will allow event to pass on to pane
     }
 
@@ -64,8 +94,10 @@ class Listener implements KeyListener {
 
   void keyTyped(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
+      println "redispatched event (keyChar: ${event.getKeyChar()}, time: ${event.getWhen()})";
       return;
     }
+    println "new event (keyChar: ${event.getKeyChar()}, time: ${event.getWhen()})";
     lastKeyTyped = event;
     // Since the keyTyped event comes after the keyPressed event
     // both of the respective instance variables are available
@@ -90,7 +122,11 @@ class Listener implements KeyListener {
   }
 
   boolean isSameEvent(event, lastConsumedEvent) {
-    (lastConsumedEvent.getWhen() == event.getWhen() && (lastConsumedEvent.getKeyChar() == event.getKeyChar()));
+    // Redispatched event is set to a fraction of a second less than
+    // original event to avoid repeating keys from being considered
+    // redispatched events
+    // (lastConsumedEvent.getWhen() == (event.getWhen() + FAKE_REDISPATCH_DELAY) && (lastConsumedEvent.getKeyChar() == event.getKeyChar()));
+    (lastConsumedEvent.getWhen() == (event.getWhen() + FAKE_REDISPATCH_DELAY) && (lastConsumedEvent.getKeyChar() == event.getKeyChar()));
   }
 }
 
@@ -160,11 +196,11 @@ abstract class Mode {
 
     keyChar = stroke.keyTyped.keyChar;
     if ((32..126).contains(keyChar)) {
-      key = keyChar; 
+      key = keyChar;
     } else {
       key = stroke.keyPressed.keyCode;
     }
-    
+
     accumulatedKeys = accumulatedKeys << key;
     remapCandidates = findRemapCandidates();
 
@@ -215,11 +251,11 @@ abstract class Mode {
   Map tokenizeUserEnteredRemaps() {
     Map tokenizedRemaps = [:];
     userEnteredRemaps.each { k, v ->
-      tokenizedRemaps[tokenizeRemapString(k)] = tokenizeRemapString(v); 
+      tokenizedRemaps[tokenizeRemapString(k)] = tokenizeRemapString(v);
     }
     return tokenizedRemaps;
   }
-  
+
   int translateKey(key) {
     return VK_KEYS[key.toLowerCase()] ?: (int)key;
     // List results = [];
@@ -262,7 +298,7 @@ abstract class Mode {
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
-  static final int CNT_RANGE_START = (int)'1'; 
+  static final int CNT_RANGE_START = (int)'1';
   static final int CNT_RANGE_END = (int)'9';
   OperatorPendingMode operatorPendingMode;
   String count;
@@ -325,8 +361,13 @@ class NormalMode extends Mode {
         resetCount();
         break;
       case (int)'w':
-        int numOfWords = count ? count.toInteger() : 1;
-        manager.moveByWord(numOfWords)
+        int number = count ? count.toInteger() : 1;
+        manager.moveByWord(number);
+        resetCount();
+        break;
+      case (int)'x':
+        int number = count ? count.toInteger() : 1;
+        manager.deleteChars(number);
         resetCount();
         break;
       case (int)'0':
@@ -374,15 +415,17 @@ class InsertMode extends Mode {
     if ((int)stroke.keyTyped.keyChar == KeyEvent.VK_ESCAPE) {
       manager.switchTo(ModeID.NORMAL)
     } else if ((int)stroke.keyPressed.keyChar == KeyEvent.VK_BACK_SPACE) {
-      manager.redispatchEvent(stroke.keyPressed);
+      KeyEvent eventWithFakeDelay = KeyManager.createEventWithFakeDelay(stroke.keyPressed);
+      manager.redispatchEvent(eventWithFakeDelay);
     } else {
-      manager.redispatchEvent(stroke.keyTyped);
+      KeyEvent eventWithFakeDelay = KeyManager.createEventWithFakeDelay(stroke.keyTyped);
+      manager.redispatchEvent(eventWithFakeDelay);
     }
   }
 }
 
 class VisualMode extends Mode {
- 
+
   VisualMode(KeyManager manager) {
     super(manager);
     userEnteredRemaps = [:];
@@ -416,15 +459,27 @@ class KeyManager {
   Mode currentMode;
   char keyChar;
   EditorController editor;
-  EditorTextArea3 pane;
+  static EditorTextArea3 pane;
 
-  KeyManager(EditorController editor, EditorTextArea3 pane) {
+  KeyManager(EditorController editor, EditorTextArea3 editorPane) {
     this.editor = editor;
-    this.pane = pane;
+    pane = editorPane;
     normalMode = new NormalMode(this);
     insertMode = new InsertMode(this);
     visualMode = new VisualMode(this);
     currentMode = normalMode;
+  }
+
+  static KeyEvent createEventWithFakeDelay(event) {
+    // Fake event is set to a fraction of a second less than
+    // original event to avoid repeating keys from being considered
+    // redispatched events
+    KeyEvent eventWithFakeDelay = new KeyEvent(pane, event.getID(),
+                                               event.getWhen() - Listener.FAKE_REDISPATCH_DELAY,
+                                               event.getModifiers(),
+                                               event.getKeyCode(),
+                                               event.getKeyChar())
+    return eventWithFakeDelay;
   }
 
   void switchTo(modeID) {
@@ -453,24 +508,21 @@ class KeyManager {
       throw new InterruptException();
     }
 
-    if (ctrlPressed(stroke)) {
-      println "ctrlPressed";
-    }
-
     // Immediately redispatch all keys with ctrl modifier
     // as well as all keys that are not used in vim
-    // I may want to change this to be able to use ctrl key in vim 
+    // I may want to change this to be able to use ctrl key in vim
     if ((isNotVimKey(keyChar)) || ctrlPressed(stroke)) {
-      redispatchEvent(stroke.keyPressed);
+      KeyEvent eventWithFakeDelay = KeyManager.createEventWithFakeDelay(stroke.keyPressed);
+      redispatchEvent(eventWithFakeDelay);
     } else {
       currentMode.process(stroke);
     }
   }
 
+
   boolean ctrlPressed(Stroke stroke) {
     ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
-  } 
-
+  }
 
   // The delete key doesn't show up as CHAR_UNDEFINED, so
   // we check for it separately
@@ -494,6 +546,13 @@ class KeyManager {
     editor.setCaretPosition(caret);
   }
 
+  void deleteChars(int number) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    int deleteStart = currentPos;
+    int deleteEnd = currentPos + number
+    editor.replacePartOfText('', deleteStart, deleteEnd);
+  }
+
   void moveByWord(int number) {
     // TODO: Fix stop on accented characters
     //       Should stop on puntuation (right?)
@@ -509,12 +568,12 @@ class KeyManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    int endIndex = (!!candidates) ? candidates[-1] : currentPos  
+    int endIndex = (!!candidates) ? candidates[-1] : currentPos
     int newPos = (candidates[number - 1]) ?: endIndex;
 
 
     // This repeats in several methods --> extract to another method
-    // Include logic to see if final index if within bounds  
+    // Include logic to see if final index if within bounds
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
     editor.setCaretPosition(caretPosition);
   }
@@ -531,10 +590,10 @@ class KeyManager {
     String candidateRegex = (char)keyChar
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
-    
+
     int newPos = (candidates[number - 1]) ?: currentPos;
     // This repeats in several methods --> extract to another method
-    // Include logic to see if final index if within bounds  
+    // Include logic to see if final index if within bounds
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
     editor.setCaretPosition(caretPosition);
   }
@@ -552,8 +611,8 @@ class KeyManager {
 
   void moveCaret(int positionChange) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
-    int newPos = currentPos + positionChange; 
-    int lineLength = editor.getCurrentTranslation().length(); 
+    int newPos = currentPos + positionChange;
+    int lineLength = editor.getCurrentTranslation().length();
 
     println "\nnewPos: $newPos\n";
     if (newPos < 0) {
