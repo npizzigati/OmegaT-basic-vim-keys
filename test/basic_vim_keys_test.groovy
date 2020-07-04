@@ -3,6 +3,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.text.DefaultCaret;
 import java.awt.Robot;
+import java.awt.Color;
 
 class VimKeysTest extends GroovyTestCase {
   Binding binding
@@ -19,6 +20,8 @@ class VimKeysTest extends GroovyTestCase {
       frame.setVisible(true);
 
       pane.setContentType("text/plain");
+      pane.setBackground(Color.BLACK);
+      pane.setForeground(Color.WHITE);
       frame.setContentPane(pane);
       pane.setEditable(true);
       pane.setFocusable(true);
@@ -173,7 +176,7 @@ class VimKeysTest extends GroovyTestCase {
     assertEquals(expected, actual);
   }
 
-  void goToChar() {
+  void testGoToChar() {
     Thread.sleep(50);
     setupShell();
 
@@ -182,13 +185,13 @@ class VimKeysTest extends GroovyTestCase {
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
 
-    int expected = 4
+    int expected = 3
     int actual = binding.editor.editor.getCaretPosition();
 
     assertEquals(expected, actual);
   }
 
-  void goToSecondChar() {
+  void testGoToSecondChar() {
     Thread.sleep(50);
     setupShell();
 
@@ -197,9 +200,24 @@ class VimKeysTest extends GroovyTestCase {
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
 
-    int expected = 6
+    int expected = 5
     int actual = binding.editor.editor.getCaretPosition();
 
     assertEquals(expected, actual);
   }
+
+  void testDeleteChar() {
+    Thread.sleep(100);
+    setupShell();
+
+    String robotKeys = 'i t h i s ESCAPE 0 x';
+
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = 'his'
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
 }
