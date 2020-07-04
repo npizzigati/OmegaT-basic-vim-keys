@@ -160,6 +160,7 @@ class VimKeysTest extends GroovyTestCase {
 
     assertEquals(expected, actual);
   }
+
   void testMoveCaretMultipleWords() {
     Thread.sleep(50);
     setupShell();
