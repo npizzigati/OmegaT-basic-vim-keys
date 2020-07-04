@@ -23,17 +23,14 @@ public class EditorController implements IEditor {
   }
 
   public void replaceEditText(String replacement) {
-    editor.setText();
+    editor.setText(replacement);
   }
 
-  // I haven't tested this method
   public void replacePartOfText(String replacement,
                                 int startIndex,
                                 int endIndex) {
-    String current_text = editor.getText();
-    String new_text = current_text[0..(startIndex - 1)] +
-                      replacement +
-                      current_text[(endIndex + 1)..-1];
+    String currentText = editor.getText();
+    editor.setText(currentText.substring(0, startIndex) + replacement + currentText.substring(endIndex));
   }
 
   // Need to have another method signature for 2 inputs
