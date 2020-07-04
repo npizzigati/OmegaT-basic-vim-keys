@@ -3,24 +3,6 @@
  * @author: Nicholas Pizzigati
  */
 
-// TODO: When holding down h in normal mode, some h's  
-// appear not to be processed -- they are output to the
-// OmegaT editor pane. Update: this actually happens while
-// holding down any key in normal mode
-// FIXED: I fixed this by giving these immediately redispatched keys
-// a fake time a fraction of a second earlier than the original event...
-// Minor problems with the fix: architectural: pane is now a static variable
-// in KeyManager but an instance variable in Listener -- can I make it a
-// static variable in Listener, too, maybe along with editor?
-// Maybe get rid of the createEventWithFakeDelay function altogether and
-// Simply create another method in KeyManager for immediately redispatched
-// Keys, and include the fake delay there. This would also enable me to
-// customize the function I'm using for other (inoremap) events, to avoid
-// creating an event twice
-
-// Second potential problem: Are there more places where I need to redispatch
-// keys with fake delay?
-
 // Shift-F3 for change case does not get passed through
 
 // deleteChars method should check to make sure end of deletion is
@@ -72,7 +54,6 @@ class InterruptException extends Exception {
 }
 
 class Listener implements KeyListener {
-
   char keyChar;
   EditorTextArea3 pane;
   KeyEvent lastKeyPressed;
