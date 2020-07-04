@@ -41,13 +41,13 @@ class VimKeysTest extends GroovyTestCase {
       String[] robotKeysArray = robotKeys.split();
       println "robotKeysArray = $robotKeysArray"
       robotKeysArray.each {
-        String upcaseChar = it.toUpperCase();
-        int vkKey = KeyEvent.getDeclaredField("VK_$upcaseChar").get(dummyKeyEvent);
-        Thread.sleep(30);
+        String upcaseKey = it.toUpperCase();
+        int vkKey = KeyEvent.getDeclaredField("VK_$upcaseKey").get(dummyKeyEvent);
+        robot.delay(30);
         robot.keyPress(vkKey);
-        Thread.sleep(30);
+        robot.delay(10);
         robot.keyRelease(vkKey);
-        Thread.sleep(30);
+        robot.delay(20);
       }
     }
 
@@ -69,6 +69,7 @@ class VimKeysTest extends GroovyTestCase {
   // class
 
   void testDoesNotInsertTextInNormalMode() {
+    Thread.sleep(50);
     setupShell();
     String robotKeys = 'i a ESCAPE b'
 
@@ -78,6 +79,7 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testhMovesOneSpaceBackInNormalMode() {
+    Thread.sleep(50);
     setupShell();
 
     String robotKeys = 'i a ESCAPE h'
@@ -93,6 +95,7 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testhhMovesTwoSpacesBackInNormalMode() {
+    Thread.sleep(50);
     setupShell();
 
     String robotKeys = 'i a a ESCAPE h h i b'
@@ -107,6 +110,7 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testllMovesTwoSpacesForwardInNormalMode() {
+    Thread.sleep(50);
     setupShell();
 
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
@@ -122,7 +126,8 @@ class VimKeysTest extends GroovyTestCase {
     assertEquals(expected, actual);
   }
 
-  void testMovesToBegginingOfSegment() {
+  void test0MovesToBegginingOfSegment() {
+    Thread.sleep(50);
     setupShell();
 
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
@@ -137,16 +142,62 @@ class VimKeysTest extends GroovyTestCase {
     assertEquals(expected, actual);
   }
 
-  void testMovesToEndOfSegment() {
+  void testMoveCaretOneWord() {
+    Thread.sleep(50);
     setupShell();
 
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0 l dollar dollar l' 
+    robotKeys += ' 0 w' 
 
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
 
-    int expected = 14;
+    int expected = 5
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
+  }
+  void testMoveCaretMultipleWords() {
+    Thread.sleep(50);
+    setupShell();
+
+    String robotKeys = 'i t h i s space i s space a space t e s t escape';
+    robotKeys += ' 0 3 w' 
+
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 10
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
+  }
+
+  void goToChar() {
+    Thread.sleep(50);
+    setupShell();
+
+    String robotKeys = 'i t h i s ESCAPE 0 f s';
+
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 4
+    int actual = binding.editor.editor.getCaretPosition();
+
+    assertEquals(expected, actual);
+  }
+
+  void goToSecondChar() {
+    Thread.sleep(50);
+    setupShell();
+
+    String robotKeys = 'i t h i s SPACE i s ESCAPE 0 2 f i';
+
+    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 6
     int actual = binding.editor.editor.getCaretPosition();
 
     assertEquals(expected, actual);

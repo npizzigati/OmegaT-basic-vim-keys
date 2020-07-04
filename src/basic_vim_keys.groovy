@@ -23,8 +23,27 @@
 
 // Shift-F3 for change case does not get passed through
 
+// deleteChars method should check to make sure end of deletion is
+// within range
+
+// Ctrl-down arrow not working to insert tag. Arrow keys not
+// working in general -- they are consumed without being routed
+// I need to move the call to route out of keyTyped, since arrow
+// keys (and maybe others, like Fn keys, do not fire keyTyped
+// events
+
+// Pressing tab sometimes results in insertion of the translation
+// for the previous segment -- this seems to be because the
+// previous keyChar is being carried over (since tab has a
+// blank one?) because of having keyChar as an instance variable
+
 // Compose key characters seem not to work -- do I need to let all modifiers
 // (except shift) through untouched, like ctrl?
+
+// In KeyManager, keyCode is defined as an instance variable
+// with char, whereas elsewhere I define it as an int -- should
+// probably stick with int. And should it really be an instance
+// variable?
 
 // TODO: Sometimes when in normal mode, I have to press i
 // twice to switch to normal mode.
@@ -88,6 +107,7 @@ class Listener implements KeyListener {
     }
 
     lastKeyPressed = event;
+    println "\nkeyPressed.keyCode = ${event.getKeyCode()}"
 
     event.consume();
   }
@@ -97,7 +117,7 @@ class Listener implements KeyListener {
       println "redispatched event (keyChar: ${event.getKeyChar()}, time: ${event.getWhen()})";
       return;
     }
-    println "new event (keyChar: ${event.getKeyChar()}, time: ${event.getWhen()})";
+    println "keyPressed.keyChar(int): ${event.getKeyChar()}, time: ${(int)event.getWhen()}\n";
     lastKeyTyped = event;
     // Since the keyTyped event comes after the keyPressed event
     // both of the respective instance variables are available
@@ -178,7 +198,6 @@ abstract class Mode {
       resetAccumulatedKeys();
     }
   }
-
 
   void process(Stroke stroke) {
     int key;
@@ -307,7 +326,6 @@ class NormalMode extends Mode {
     NONE, TO, TILL, TO_BACK, TILL_BACK;
   }
   ToOrTill toOrTill;
-
 
   NormalMode(KeyManager manager) {
     super(manager);
@@ -503,6 +521,7 @@ class KeyManager {
     // put stroke in some kind of history?
 
     keyChar = stroke.keyTyped.keyChar;
+    println "Has keyTypedEvent: ${!!stroke.keyTyped}"
 
     if (keyChar == 'q') {
       throw new InterruptException();
@@ -511,7 +530,7 @@ class KeyManager {
     // Immediately redispatch all keys with ctrl modifier
     // as well as all keys that are not used in vim
     // I may want to change this to be able to use ctrl key in vim
-    if ((isNotVimKey(keyChar)) || ctrlPressed(stroke)) {
+    if ((isNotVimKey(stroke)) || ctrlPressed(stroke)) {
       KeyEvent eventWithFakeDelay = KeyManager.createEventWithFakeDelay(stroke.keyPressed);
       redispatchEvent(eventWithFakeDelay);
     } else {
@@ -526,8 +545,15 @@ class KeyManager {
 
   // The delete key doesn't show up as CHAR_UNDEFINED, so
   // we check for it separately
-  boolean isNotVimKey(char keyChar) {
-    isUndefined(keyChar) || isDelete(keyChar);
+  boolean isNotVimKey(Stroke stroke) {
+    keyChar = stroke.keyTyped.keyChar;
+    isUndefined(keyChar) || isDelete(keyChar) || hasNoKeyTypedEvent(stroke);
+  }
+
+  boolean hasNoKeyTypedEvent(Stroke stroke) {
+    // Events that fall in this category include arrow keys
+    // !!Stroke.keyTyped
+    false
   }
 
   boolean isDelete(char keyChar) {
