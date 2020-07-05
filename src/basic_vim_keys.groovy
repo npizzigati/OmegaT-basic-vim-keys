@@ -65,7 +65,6 @@ class Listener implements KeyListener {
   Listener(EditorController editor,
            EditorTextArea3 pane) {
     this.pane = pane;
-    println 'Listener initialized';
     lastKeyPressed = null;
     lastKeyTyped = null;
     manager = new KeyManager(editor, pane);
@@ -83,28 +82,31 @@ class Listener implements KeyListener {
 
   void keyPressed(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
-      println "redispatching event (keyChar: ${event.getKeyChar()})";
       return; //This will allow event to pass on to pane
     }
 
-    lastKeyPressed = event;
-    println "\nkeyPressed.keyCode = ${event.getKeyCode()}"
 
-    event.consume();
+    // If event is an action key, there will be no
+    // keyTyped event issued and we just let the character pass
+    // through. This is true in the case of function keys,
+    // arrow keys, home, end, etc.
+    if (!(event.isActionKey())) {
+      lastKeyPressed = event;
+      event.consume();
+    } 
   }
 
   void keyTyped(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
-      println "redispatched event (keyChar: ${event.getKeyChar()}, time: ${event.getWhen()})";
       return;
     }
 
-    println "keyPressed.keyChar(int): ${event.getKeyChar()}, time: ${(int)event.getWhen()}\n";
     lastKeyTyped = event;
     // Since the keyTyped event comes after the keyPressed event
     // both of the respective instance variables are available
     // when stroke is instantiated
     stroke = new Stroke(lastKeyPressed, lastKeyTyped)
+
     try {
       manager.route(stroke);
     } catch (InterruptException e) {
@@ -115,7 +117,7 @@ class Listener implements KeyListener {
   }
 
   void keyReleased(KeyEvent releasedEvent) {
-    releasedEvent.consume();
+    // releasedEvent.consume();
   }
 
   boolean isRedispatchedEvent(KeyEvent event) {
@@ -128,9 +130,6 @@ class Listener implements KeyListener {
     // Redispatched event is set to a fraction of a second earlier than
     // original event to avoid repeating keys (like when holding
     // key down) from being considered redispatched events
-    println "Checking to see if this is the same event...";
-    println "lastConsumedEvent vs. event";
-    println "when: ${lastConsumedEvent.getWhen()} vs. ${event.getWhen()}"
     (lastConsumedEvent.getWhen() == (event.getWhen() + FAKE_REDISPATCH_DELAY)
      && (lastConsumedEvent.getKeyChar() == event.getKeyChar()));
   }
@@ -178,7 +177,6 @@ abstract class Mode {
         if (Thread.interrupted()) return;
       }
 
-      println 'Timeout'
       keyDispatchQueue = accumulatedKeys.toList();
       invokeLaterDispatch(keyDispatchQueue.clone());
       resetAccumulatedKeys();
@@ -187,10 +185,8 @@ abstract class Mode {
 
   void process(Stroke stroke) {
     int key;
-    int keyChar;
 
     if (keyDispatchQueue) {
-      println "executing stroke ${stroke.keyTyped.keyChar}"
       execute(stroke);
       keyDispatchQueue.pop();
       return;
@@ -199,12 +195,7 @@ abstract class Mode {
     if (isRemapTimeoutThreadRunning())
       remapTimeoutThread.interrupt();
 
-    keyChar = stroke.keyTyped.keyChar;
-    if ((32..126).contains(keyChar)) {
-      key = keyChar;
-    } else {
-      key = stroke.keyPressed.keyCode;
-    }
+    key = stroke.keyTyped.getKeyChar();
 
     accumulatedKeys = accumulatedKeys << key;
     remapCandidates = findRemapCandidates();
@@ -263,12 +254,6 @@ abstract class Mode {
 
   int translateKey(key) {
     return VK_KEYS[key.toLowerCase()] ?: (int)key;
-    // List results = [];
-    // remapMatch.each {
-      // int translatedKey = VK_KEYS[it.toLowerCase()] ?: (int)it;
-      // results << translatedKey;
-    // }
-    // return results;
   }
 
   void refireNonRemappedKeys() {
@@ -338,7 +323,7 @@ class NormalMode extends Mode {
   }
 
   void execute(Stroke stroke) {
-    keyChar = stroke.keyTyped.keyChar
+    keyChar = stroke.keyTyped.getKeyChar();
     if (toOrTillPending()) {
       executeToOrTill(keyChar);
       return;
@@ -385,9 +370,7 @@ class NormalMode extends Mode {
         manager.moveToLineEnd();
         break;
       case (CNT_RANGE_START..CNT_RANGE_END):
-        println "countchar: $keyChar"
         count = count + (char)keyChar;
-        println "count: $count";
         break;
     }
   }
@@ -398,7 +381,7 @@ class NormalMode extends Mode {
 
   class OperatorPendingMode {
     void execute(Stroke stroke) {
-      if((1..9).contains(stroke.keyTyped.keyChar)) {
+      if((1..9).contains(stroke.keyTyped.getKeyChar())) {
         // Do something;
       }
     }
@@ -416,9 +399,9 @@ class InsertMode extends Mode {
   }
 
   void execute(Stroke stroke) {
-    if ((int)stroke.keyTyped.keyChar == KeyEvent.VK_ESCAPE) {
+    if ((int)stroke.keyTyped.getKeyChar() == KeyEvent.VK_ESCAPE) {
       manager.switchTo(ModeID.NORMAL)
-    } else if ((int)stroke.keyPressed.keyChar == KeyEvent.VK_BACK_SPACE) {
+    } else if ((int)stroke.keyPressed.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
       manager.redispatchEvent(stroke.keyPressed);
     } else {
       manager.redispatchEvent(stroke.keyTyped);
@@ -427,7 +410,6 @@ class InsertMode extends Mode {
 }
 
 class VisualMode extends Mode {
-
   VisualMode(KeyManager manager) {
     super(manager);
     userEnteredRemaps = [:];
@@ -489,17 +471,16 @@ class KeyManager {
   }
 
   void route(Stroke stroke) throws InterruptException {
-    keyChar = stroke.keyTyped.keyChar;
-    println "Has keyTypedEvent: ${!!stroke.keyTyped}"
+    keyChar = stroke.keyTyped.getKeyChar();
 
     if (keyChar == 'q') {
       throw new InterruptException();
     }
 
     // Immediately redispatch all keys with ctrl modifier
-    // as well as all keys that are not used in vim
+    // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
-    if ((isNotVimKey(stroke)) || ctrlPressed(stroke)) {
+    if ((isDelete(keyChar)) || ctrlPressed(stroke)) {
       redispatchEvent(stroke.keyPressed);
     } else {
       currentMode.process(stroke);
@@ -510,25 +491,8 @@ class KeyManager {
     ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
   }
 
-  // The delete key doesn't show up as CHAR_UNDEFINED, so
-  // we check for it separately
-  boolean isNotVimKey(Stroke stroke) {
-    keyChar = stroke.keyTyped.keyChar;
-    isUndefined(keyChar) || isDelete(keyChar) || hasNoKeyTypedEvent(stroke);
-  }
-
-  boolean hasNoKeyTypedEvent(Stroke stroke) {
-    // Events that fall in this category include arrow keys
-    // !!Stroke.keyTyped
-    false
-  }
-
   boolean isDelete(char keyChar) {
     (int)keyChar == 127;
-  }
-
-  boolean isUndefined(char keyChar) {
-    keyChar == KeyEvent.CHAR_UNDEFINED;
   }
 
   void testSelection() {
@@ -607,7 +571,6 @@ class KeyManager {
     int newPos = currentPos + positionChange;
     int lineLength = editor.getCurrentTranslation().length();
 
-    println "\nnewPos: $newPos\n";
     if (newPos < 0) {
       newPos = 0;
     } else if (newPos > lineLength) {
@@ -625,7 +588,6 @@ class KeyManager {
 
   void moveToLineEnd() {
     int endCaretPosition = editor.getCurrentTranslation().length();
-    println "\nsegment length: $endCaretPosition\n";
 
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(endCaretPosition);
     editor.setCaretPosition(caretPosition);
@@ -633,9 +595,8 @@ class KeyManager {
 
   void batchDispatchKeys(List queue) {
     queue.each {
-      // KeyEvent event = createEvent(it as char);
       KeyEvent event = createEvent(it);
-      Thread.sleep(1); // Prevent KeyEvents being created with the same time
+      Thread.sleep(5); // Prevent KeyEvents being created with the same time
       dispatchCreatedEvent(event);
     }
   }
@@ -645,15 +606,9 @@ class KeyManager {
     int id;
     int keyCode;
     char keyChar;
-    if ((32..126).contains(key) || [8, 27, 127].contains(key)) {
-      keyChar = (char)key;
-      keyCode = 0;
-      id = KeyEvent.KEY_TYPED;
-    } else {
-      keyChar = KeyEvent.CHAR_UNDEFINED;
-      keyCode = key;
-      id = KeyEvent.KEY_PRESSED;
-    }
+    keyChar = (char)key;
+    keyCode = 0;
+    id = KeyEvent.KEY_TYPED;
     long when = System.currentTimeMillis();
     int modifiers = 0;
     return new KeyEvent(pane, id, when, modifiers,
