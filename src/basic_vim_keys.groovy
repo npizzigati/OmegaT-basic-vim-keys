@@ -3,35 +3,18 @@
  * @author: Nicholas Pizzigati
  */
 
-// Shift-F3 for change case does not get passed through
-
 // deleteChars method should check to make sure end of deletion is
 // within range
 
-// Ctrl-down arrow not working to insert tag. Arrow keys not
-// working in general -- they are consumed without being routed
-// I need to move the call to route out of keyTyped, since arrow
-// keys (and maybe others, like Fn keys, do not fire keyTyped
-// events
+// When I use tab to advance segment, often the previous machine
+// translation match is inserted
 
-// Pressing tab sometimes results in insertion of the translation
-// for the previous segment -- this seems to be because the
-// previous keyChar is being carried over (since tab has a
-// blank one?) because of having keyChar as an instance variable
+// KeyEvent doesn't guarantee that keyTyped will be issued after
+// keyPressed... is there a way we can deal with this?
+// Maybe check for an existing stroke with each, and the send stroke
+// to be routed? If we do this, how can we make sure stroke is
+// reset on each key press?
 
-// Compose key characters seem not to work -- do I need to let all modifiers
-// (except shift) through untouched, like ctrl?
-
-// In KeyManager, keyCode is defined as an instance variable
-// with char, whereas elsewhere I define it as an int -- should
-// probably stick with int. And should it really be an instance
-// variable?
-
-// TODO: Sometimes when in normal mode, I have to press i
-// twice to switch to normal mode.
-
-
- 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
@@ -54,7 +37,7 @@ class InterruptException extends Exception {
 }
 
 class Listener implements KeyListener {
-  char keyChar;
+  // char keyChar;
   EditorTextArea3 pane;
   KeyEvent lastKeyPressed;
   KeyEvent lastKeyTyped;
@@ -117,7 +100,7 @@ class Listener implements KeyListener {
   }
 
   void keyReleased(KeyEvent releasedEvent) {
-    // releasedEvent.consume();
+    releasedEvent.consume();
   }
 
   boolean isRedispatchedEvent(KeyEvent event) {
@@ -440,7 +423,7 @@ class KeyManager {
   Mode insertMode;
   Mode visualMode;
   Mode currentMode;
-  char keyChar;
+  // char keyChar;
   EditorController editor;
   static EditorTextArea3 pane;
 
@@ -471,16 +454,16 @@ class KeyManager {
   }
 
   void route(Stroke stroke) throws InterruptException {
-    keyChar = stroke.keyTyped.getKeyChar();
+    int key = stroke.keyTyped.getKeyChar();
 
-    if (keyChar == 'q') {
+    if ((char)key == 'q') {
       throw new InterruptException();
     }
 
     // Immediately redispatch all keys with ctrl modifier
     // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
-    if ((isDelete(keyChar)) || ctrlPressed(stroke)) {
+    if ((isDelete(key)) || ctrlPressed(stroke)) {
       redispatchEvent(stroke.keyPressed);
     } else {
       currentMode.process(stroke);
@@ -491,8 +474,8 @@ class KeyManager {
     ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
   }
 
-  boolean isDelete(char keyChar) {
-    (int)keyChar == 127;
+  boolean isDelete(int key) {
+    key == 127;
   }
 
   void testSelection() {
@@ -540,11 +523,11 @@ class KeyManager {
     (text[index] ==~ /\s/);
   }
 
-  void goForwardToChar(int keyChar, int number) {
+  void goForwardToChar(int key, int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = (char)keyChar
+    String candidateRegex = (char)key
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
 
@@ -601,14 +584,10 @@ class KeyManager {
     }
   }
 
-  // KeyEvent createEvent(char keyChar) {
-  KeyEvent createEvent(key) {
-    int id;
-    int keyCode;
-    char keyChar;
-    keyChar = (char)key;
-    keyCode = 0;
-    id = KeyEvent.KEY_TYPED;
+  KeyEvent createEvent(int key) {
+    int id = KeyEvent.KEY_TYPED;
+    int keyCode = 0;
+    char keyChar = key;
     long when = System.currentTimeMillis();
     int modifiers = 0;
     return new KeyEvent(pane, id, when, modifiers,
