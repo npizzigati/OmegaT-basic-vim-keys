@@ -549,7 +549,7 @@ class KeyManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    int endIndex = (!!candidates) ? candidates[-1] : currentPos
+    int endIndex = (!!candidates) ? candidates[-1] : length - 1
     int newPos = (candidates[number - 1]) ?: endIndex;
 
 
