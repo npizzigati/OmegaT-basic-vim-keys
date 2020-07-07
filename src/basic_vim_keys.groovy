@@ -3,6 +3,8 @@
  * @author: Nicholas Pizzigati
  */
 
+// w in normal mode should stop at last character index
+
 // deleteChars method should check to make sure end of deletion is
 // within range
 
@@ -41,6 +43,8 @@ class Listener implements KeyListener {
   EditorTextArea3 pane;
   KeyEvent lastKeyPressed;
   KeyEvent lastKeyTyped;
+  KeyEvent lastConsumedKeyPressed;
+  KeyEvent lastConsumedKeyTyped;
   KeyManager manager;
   Stroke stroke;
   static final FAKE_REDISPATCH_DELAY = 50;
@@ -63,38 +67,70 @@ class Listener implements KeyListener {
     pane.removeKeyListener(this);
   }
 
+  void storeLastConsumed() {
+    lastConsumedKeyPressed = lastKeyPressed;
+    lastConsumedKeyTyped = lastKeyTyped;
+  }
+
+  void resetKeyEvents() {
+    lastKeyPressed = null
+    lastKeyTyped = null
+  }
+
   void keyPressed(KeyEvent event) {
-    if(isRedispatchedEvent(event)) {
+    if(isRedispatchedEvent(event) || event.isActionKey()) {
+      println "\nLetting keyPressed event pass through"
+      println "keyPressed time: ${event.getWhen()}";
       return; //This will allow event to pass on to pane
     }
 
 
-    // If event is an action key, there will be no
-    // keyTyped event issued and we just let the character pass
-    // through. This is true in the case of function keys,
-    // arrow keys, home, end, etc.
-    if (!(event.isActionKey())) {
-      lastKeyPressed = event;
-      event.consume();
-    } 
+    // // If event is an action key, there will be no
+    // // keyTyped event issued and we just let the character pass
+    // // through. This is true in the case of function keys,
+    // // arrow keys, home, end, etc.
+    // if (!(event.isActionKey())) {
+    //   lastKeyPressed = event;
+    //   event.consume();
+    // } 
+
+    lastKeyPressed = event;
+    println "\nkeyPressed time: ${event.getWhen()}";
+
+    if(lastKeyTyped) {
+      stroke = new Stroke(lastKeyPressed, lastKeyTyped);
+      storeLastConsumed();
+      resetKeyEvents();
+      try {
+        manager.route(stroke);
+      } catch (InterruptException e) {
+        stopListening();
+        println e.message;
+      }
+    }
+    event.consume();
   }
 
   void keyTyped(KeyEvent event) {
     if(isRedispatchedEvent(event)) {
+      println "Letting keyTyped event pass through"
+      println "keyTyped time: ${event.getWhen()}";
       return;
     }
 
     lastKeyTyped = event;
-    // Since the keyTyped event comes after the keyPressed event
-    // both of the respective instance variables are available
-    // when stroke is instantiated
-    stroke = new Stroke(lastKeyPressed, lastKeyTyped)
+    println "keyTyped time: ${event.getWhen()}";
 
-    try {
-      manager.route(stroke);
-    } catch (InterruptException e) {
-      stopListening()
-      println e.message
+    if(lastKeyPressed || manager.isRemapDispatchUnderway) {
+      stroke = new Stroke(lastKeyPressed, lastKeyTyped);
+      storeLastConsumed();
+      resetKeyEvents();
+      try {
+        manager.route(stroke);
+      } catch (InterruptException e) {
+        stopListening();
+        println e.message;
+      }
     }
     event.consume();
   }
@@ -104,8 +140,8 @@ class Listener implements KeyListener {
   }
 
   boolean isRedispatchedEvent(KeyEvent event) {
-    KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastKeyPressed
-                                                                         : lastKeyTyped;
+    KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastConsumedKeyPressed
+                                                                         : lastConsumedKeyTyped;
     ((lastConsumedEvent != null) && isSameEvent(event, lastConsumedEvent));
   }
 
@@ -135,8 +171,9 @@ abstract class Mode {
   Map userEnteredRemaps;
   Map remaps;
   Map remapCandidates;
-  List accumulatedKeys;
-  List<Character> keyDispatchQueue;
+  Map accumulatedStrokes;
+  List remapDispatchQueue;
+  List strokeDispatchQueue;
   Long lastKeypressTime;
   Thread remapTimeoutThread;
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
@@ -147,9 +184,10 @@ abstract class Mode {
 
   Mode(KeyManager manager) {
     this.manager = manager;
-    resetAccumulatedKeys();
+    resetAccumulatedStrokes();
     resetRemapCandidates();
-    keyDispatchQueue = [];
+    remapDispatchQueue = [];
+    strokeDispatchQueue = [];
   }
 
   class RemapTimeoutThread extends Thread {
@@ -160,33 +198,33 @@ abstract class Mode {
         if (Thread.interrupted()) return;
       }
 
-      keyDispatchQueue = accumulatedKeys.toList();
-      invokeLaterDispatch(keyDispatchQueue.clone());
-      resetAccumulatedKeys();
+      strokeDispatchQueue = accumulatedStrokes.values() as List;
+      invokeLaterDispatch(strokeDispatchQueue.clone());
+      resetAccumulatedStrokes();
     }
   }
 
   void process(Stroke stroke) {
-    int key;
-
-    if (keyDispatchQueue) {
+    if (strokeDispatchQueue) {
+      println "dispatching from strokeDispatchQueue";
       execute(stroke);
-      keyDispatchQueue.pop();
+      strokeDispatchQueue.pop();
       return;
     }
 
     if (isRemapTimeoutThreadRunning())
       remapTimeoutThread.interrupt();
 
-    key = stroke.keyTyped.getKeyChar();
+    int key = stroke.keyTyped.getKeyChar();
 
-    accumulatedKeys = accumulatedKeys << key;
+    accumulatedStrokes << [(key): stroke];
     remapCandidates = findRemapCandidates();
 
     if (remapCandidates) {
       handlePossibleRemapMatch();
     } else {
-      refireNonRemappedKeys();
+      println "refiring non-remapped stroke";
+      refireNonRemappedStrokes();
     }
   }
 
@@ -199,7 +237,7 @@ abstract class Mode {
   void invokeLaterDispatch(List queue) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        manager.batchDispatchKeys(queue);
+        manager.batchRedispatchStrokes(queue);
       }
     });
   }
@@ -207,13 +245,12 @@ abstract class Mode {
   void handlePossibleRemapMatch() {
       startRemapTimeoutThread();
 
-      def remapMatch = remaps[accumulatedKeys];
+      def remapMatch = remaps[accumulatedStrokes.keySet() as List];
       if (remapMatch) {
-        resetAccumulatedKeys();
+        resetAccumulatedStrokes();
         resetRemapCandidates();
         remapTimeoutThread.interrupt();
-        keyDispatchQueue = remapMatch.clone();
-        manager.batchDispatchKeys(keyDispatchQueue.clone());
+        manager.dispatchRemapMatchKeys(remapMatch.clone());
       }
   }
 
@@ -239,26 +276,27 @@ abstract class Mode {
     return VK_KEYS[key.toLowerCase()] ?: (int)key;
   }
 
-  void refireNonRemappedKeys() {
-    keyDispatchQueue = accumulatedKeys;
-    manager.batchDispatchKeys(keyDispatchQueue.clone());
-    resetAccumulatedKeys();
+  void refireNonRemappedStrokes() {
+    strokeDispatchQueue = (strokeDispatchQueue << accumulatedStrokes.values()).flatten();
+    manager.batchRedispatchStrokes(strokeDispatchQueue.clone());
+    resetAccumulatedStrokes();
   }
 
   void resetRemapCandidates() {
     remapCandidates = [:];
   }
 
-  void resetAccumulatedKeys() {
-    accumulatedKeys = [];
+  void resetAccumulatedStrokes() {
+    accumulatedStrokes = [:];
   }
 
   Map findRemapCandidates() {
     remaps.findAll { k, v ->
-      // k.startsWith(accumulatedKeys);
-      int candidate_size = accumulatedKeys.size();
+      int candidate_size = accumulatedStrokes.size();
       int end_idx = candidate_size - 1;
-      k[0..end_idx] == accumulatedKeys;
+      println "acc strokes keyset: ${accumulatedStrokes.keySet()}";
+      println "remapped keys matching size: ${k[0..end_idx]}";
+      k[0..end_idx] == accumulatedStrokes.keySet() as List;
     }
   }
 
@@ -306,6 +344,7 @@ class NormalMode extends Mode {
   }
 
   void execute(Stroke stroke) {
+    println "executing Normal mode command";
     keyChar = stroke.keyTyped.getKeyChar();
     if (toOrTillPending()) {
       executeToOrTill(keyChar);
@@ -384,10 +423,8 @@ class InsertMode extends Mode {
   void execute(Stroke stroke) {
     if ((int)stroke.keyTyped.getKeyChar() == KeyEvent.VK_ESCAPE) {
       manager.switchTo(ModeID.NORMAL)
-    } else if ((int)stroke.keyPressed.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
-      manager.redispatchEvent(stroke.keyPressed);
     } else {
-      manager.redispatchEvent(stroke.keyTyped);
+      manager.redispatchStroke(stroke);
     }
   }
 }
@@ -423,7 +460,7 @@ class KeyManager {
   Mode insertMode;
   Mode visualMode;
   Mode currentMode;
-  // char keyChar;
+  boolean isRemapDispatchUnderway;
   EditorController editor;
   static EditorTextArea3 pane;
 
@@ -464,14 +501,18 @@ class KeyManager {
     // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
     if ((isDelete(key)) || ctrlPressed(stroke)) {
-      redispatchEvent(stroke.keyPressed);
+      redispatchStroke(stroke);
     } else {
       currentMode.process(stroke);
     }
   }
 
   boolean ctrlPressed(Stroke stroke) {
-    ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
+    if (!!(stroke.keyPressed)) {
+      return ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
+    } else {
+      return false
+    }
   }
 
   boolean isDelete(int key) {
@@ -576,15 +617,29 @@ class KeyManager {
     editor.setCaretPosition(caretPosition);
   }
 
-  void batchDispatchKeys(List queue) {
+  void batchRedispatchStrokes(List queue) {
     queue.each {
-      KeyEvent event = createEvent(it);
-      Thread.sleep(5); // Prevent KeyEvents being created with the same time
-      dispatchCreatedEvent(event);
+      // For some reason, keyPressed events are not dispatched for
+      // delete and escape if I don't create new event
+
+      // If remap dispatch underway, there will be no keyPressed
+      // so no KeyPressed to redispatch
+      if (it.keyPressed) redispatchEventForProcessing(it.keyPressed);
+      redispatchEventForProcessing(it.keyTyped);
     }
   }
 
-  KeyEvent createEvent(int key) {
+  void dispatchRemapMatchKeys(List remapMatch) {
+    isRemapDispatchUnderway = true;
+    remapMatch.each {
+      KeyEvent keyTypedEvent = createKeyTypedEvent(it);
+      pane.dispatchEvent(keyTypedEvent);
+      Thread.sleep(10); // Is this necessary? Prevent KeyEvents being created with the same time
+    }
+    isRemapDispatchUnderway = false;
+  }
+  
+  KeyEvent createKeyTypedEvent(int key) { // this creates a typed event from a key
     int id = KeyEvent.KEY_TYPED;
     int keyCode = 0;
     char keyChar = key;
@@ -594,11 +649,7 @@ class KeyManager {
                         keyCode, keyChar);
   }
 
-  void dispatchCreatedEvent(KeyEvent event) {
-    pane.dispatchEvent(event);
-  }
-
-  void redispatchEvent(KeyEvent event) {
+  void redispatchEventToPane(KeyEvent event) {
     // Redispatched event is set to a fraction of a second earlier than
     // original event to avoid repeating keys (like when holding
     // key down) from being considered redispatched events
@@ -608,6 +659,22 @@ class KeyManager {
                                     event.getKeyCode(),
                                     event.getKeyChar()));
   }
+
+  
+  void redispatchEventForProcessing(KeyEvent event) {
+    pane.dispatchEvent(new KeyEvent(pane, event.getID(),
+                                    event.getWhen(),
+                                    event.getModifiers(),
+                                    event.getKeyCode(),
+                                    event.getKeyChar()));
+  }
+
+  void redispatchStroke(Stroke stroke) {
+    println "Redispatching stroke: (keyTyped: ${(int)(stroke.keyTyped.getKeyChar())})\n";
+    redispatchEventToPane(stroke.getKeyPressed());
+    redispatchEventToPane(stroke.getKeyTyped());
+  }
+
 }
 
 if (binding.hasVariable('testing')) {
