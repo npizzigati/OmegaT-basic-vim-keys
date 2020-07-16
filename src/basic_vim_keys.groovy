@@ -28,6 +28,8 @@ import javax.swing.SwingUtilities;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
+import org.omegat.gui.editor.EditorSettings;
+
 
 class InterruptException extends Exception {
   InterruptException(){
@@ -42,12 +44,14 @@ class InterruptException extends Exception {
 class Listener implements KeyListener {
   // char keyChar;
   EditorTextArea3 pane;
+  EditorSettings editorSettings;
   KeyEvent lastKeyPressed;
   KeyEvent lastKeyTyped;
   KeyEvent lastConsumedKeyPressed;
   KeyEvent lastConsumedKeyTyped;
   KeyManager manager;
   Stroke stroke;
+  
   static final FAKE_REDISPATCH_DELAY = 50;
 
   Listener(EditorController editor,
@@ -56,6 +60,7 @@ class Listener implements KeyListener {
     lastKeyPressed = null;
     lastKeyTyped = null;
     manager = new KeyManager(editor, pane);
+    editorSettings = editor.getSettings();
     startListening();
   }
 
@@ -78,9 +83,13 @@ class Listener implements KeyListener {
     lastKeyTyped = null
   }
 
+  // OmegaT consumes the KeyPressed event when the
+  // "Advance on tab" option is selected, but check for it
+  // below (isIgnoredTab) in case that implementation is changed
+  // in the future
   void keyPressed(KeyEvent event) {
-    if(isRedispatchedEvent(event) || event.isActionKey()) {
-      println "\nLetting keyPressed event pass through"
+    if(isRedispatchedEvent(event) || event.isActionKey() || isIgnoredTab(event)) {
+      println "\nLetting keyPressed event ${event.getKeyCode()} pass through"
       println "keyPressed time: ${event.getWhen()}";
       return; //This will allow event to pass on to pane
     }
@@ -103,7 +112,7 @@ class Listener implements KeyListener {
   }
 
   void keyTyped(KeyEvent event) {
-    if(isRedispatchedEvent(event)) {
+    if(isRedispatchedEvent(event) || isIgnoredTab(event)) {
       println "Letting keyTyped event pass through"
       println "keyTyped time: ${event.getWhen()}";
       return;
@@ -133,8 +142,12 @@ class Listener implements KeyListener {
   boolean isRedispatchedEvent(KeyEvent event) {
     KeyEvent lastConsumedEvent = (event.getID() == KeyEvent.KEY_PRESSED) ? lastConsumedKeyPressed
                                                                          : lastConsumedKeyTyped;
-    ((lastConsumedEvent != null) && isSameEvent(event, lastConsumedEvent));
+    (lastConsumedEvent != null) && isSameEvent(event, lastConsumedEvent);
   }
+
+  boolean isIgnoredTab(KeyEvent event) {
+    ((int)event.getKeyChar() == 9) && editorSettings.isUseTabForAdvance()
+  } 
 
   boolean isSameEvent(event, lastConsumedEvent) {
     // Redispatched event is set to a fraction of a second earlier than
@@ -335,8 +348,7 @@ class NormalMode extends Mode {
   }
 
   void execute(Stroke stroke) {
-    println "executing Normal mode command";
-    keyChar = stroke.keyTyped.getKeyChar();
+    keyChar = (int)stroke.keyTyped.getKeyChar();
     if (toOrTillPending()) {
       executeToOrTill(keyChar);
       return;
