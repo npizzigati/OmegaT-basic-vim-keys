@@ -3,7 +3,8 @@
  * @author: Nicholas Pizzigati
  */
 
-// w in normal mode should stop at last character index
+// Pressing tab in insert mode leads to screwy behavior (especially
+// when you subsequently go into normal mode)
 
 // deleteChars method should check to make sure end of deletion is
 // within range
