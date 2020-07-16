@@ -85,16 +85,6 @@ class Listener implements KeyListener {
       return; //This will allow event to pass on to pane
     }
 
-
-    // // If event is an action key, there will be no
-    // // keyTyped event issued and we just let the character pass
-    // // through. This is true in the case of function keys,
-    // // arrow keys, home, end, etc.
-    // if (!(event.isActionKey())) {
-    //   lastKeyPressed = event;
-    //   event.consume();
-    // } 
-
     lastKeyPressed = event;
     println "\nkeyPressed time: ${event.getWhen()}";
 
