@@ -5,9 +5,6 @@
 
 // DRY up code around #moveByWord
 
-// deleteChars method should check to make sure end of deletion is
-// within range
-
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
@@ -529,8 +526,8 @@ class KeyManager {
     int deleteEnd = currentPos + number
 
     // Handle case of deleteEnd going beyond last index
-    if (deleteEnd > length - 1) {
-      deleteEnd = length - 1
+    if (deleteEnd > length) {
+      deleteEnd = length
     }
 
     editor.replacePartOfText('', deleteStart, deleteEnd);
