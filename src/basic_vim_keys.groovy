@@ -538,7 +538,8 @@ class KeyManager {
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    String candidateRegex = '(?=[^\\p{L}])(?=\\S)|((?<=[^\\p{L}])\\p{L})'
+    // String candidateRegex = '(?=[^\\p{L}])(?=\\S)|((?<=[^\\p{L}])\\p{L})'
+    String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
     Pattern pattern = Pattern.compile(candidateRegex);
     Matcher matcher = pattern.matcher(text);
     List matches = getMatches(text, candidateRegex);
