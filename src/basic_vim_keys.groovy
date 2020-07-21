@@ -3,9 +3,7 @@
  * @author: Nicholas Pizzigati
  */
 
-// TODO: add EditorSettings class to testing setup
-
-// TODO: w in normal mode isn't working right for numbers
+// DRY up code around #moveByWord
 
 // deleteChars method should check to make sure end of deletion is
 // within range
@@ -524,8 +522,17 @@ class KeyManager {
 
   void deleteChars(int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+
     int deleteStart = currentPos;
     int deleteEnd = currentPos + number
+
+    // Handle case of deleteEnd going beyond last index
+    if (deleteEnd > length - 1) {
+      deleteEnd = length - 1
+    }
+
     editor.replacePartOfText('', deleteStart, deleteEnd);
   }
 
