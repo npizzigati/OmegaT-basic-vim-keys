@@ -108,6 +108,7 @@ class Listener implements KeyListener {
     lastKeyTyped = event;
     println "keyTyped time: ${event.getWhen()}";
 
+    // If remap dispatch underway, there will be no keyPressed event
     if(lastKeyPressed || manager.isRemapDispatchUnderway) {
       stroke = new Stroke(lastKeyPressed, lastKeyTyped);
       storeLastConsumed();
@@ -525,7 +526,6 @@ class KeyManager {
     int deleteStart = currentPos;
     int deleteEnd = currentPos + number
 
-    // Handle case of deleteEnd going beyond last index
     if (deleteEnd > length) {
       deleteEnd = length
     }
@@ -533,17 +533,18 @@ class KeyManager {
     editor.replacePartOfText('', deleteStart, deleteEnd);
   }
 
+  void placeCaret(newPos) {
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
   void moveByWord(int number) {
-    // TODO: Fix stop on accented characters
-    //       Should stop on puntuation (right?)
-    //       When number of words goes beyond end, caret should
-    //       go to end
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    // String candidateRegex = '(?=[^\\p{L}])(?=\\S)|((?<=[^\\p{L}])\\p{L})'
-    String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
+    // String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
+    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
     Pattern pattern = Pattern.compile(candidateRegex);
     Matcher matcher = pattern.matcher(text);
     List matches = getMatches(text, candidateRegex);
@@ -552,11 +553,7 @@ class KeyManager {
     int endIndex = (!!candidates) ? candidates[-1] : length - 1
     int newPos = (candidates[number - 1]) ?: endIndex;
 
-
-    // This repeats in several methods --> extract to another method
-    // Include logic to see if final index if within bounds
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
-    editor.setCaretPosition(caretPosition);
+    placeCaret(newPos);
   }
 
   boolean stopPositionIsSpace(String text, int stopPos, int length) {
@@ -573,10 +570,8 @@ class KeyManager {
     List candidates = matches.findAll { it > currentPos };
 
     int newPos = (candidates[number - 1]) ?: currentPos;
-    // This repeats in several methods --> extract to another method
-    // Include logic to see if final index if within bounds
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
-    editor.setCaretPosition(caretPosition);
+
+    placeCaret(newPos);
   }
 
   List getMatches(String text, String candidateRegex) {
@@ -601,8 +596,7 @@ class KeyManager {
       newPos = lineLength;
     }
 
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
-    editor.setCaretPosition(caretPosition);
+    placeCaret(newPos);
   }
 
   void moveToLineStart() {
@@ -613,8 +607,7 @@ class KeyManager {
   void moveToLineEnd() {
     int endCaretPosition = editor.getCurrentTranslation().length();
 
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(endCaretPosition);
-    editor.setCaretPosition(caretPosition);
+    placeCaret(newPos);
   }
 
   void batchRedispatchStrokes(List queue) {
@@ -625,7 +618,6 @@ class KeyManager {
       // If remap dispatch underway, there will be no keyPressed
       // so no KeyPressed to redispatch
       if (it.keyPressed) {
-        println "REMAP DISPATCH UNDERWAY"
         redispatchEventForProcessing(it.keyPressed);
       }
       redispatchEventForProcessing(it.keyTyped);
