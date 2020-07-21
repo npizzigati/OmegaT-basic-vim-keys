@@ -624,7 +624,10 @@ class KeyManager {
 
       // If remap dispatch underway, there will be no keyPressed
       // so no KeyPressed to redispatch
-      if (it.keyPressed) redispatchEventForProcessing(it.keyPressed);
+      if (it.keyPressed) {
+        println "REMAP DISPATCH UNDERWAY"
+        redispatchEventForProcessing(it.keyPressed);
+      }
       redispatchEventForProcessing(it.keyTyped);
     }
   }
