@@ -50,4 +50,8 @@ public class EditorController implements IEditor {
     DefaultCaret caret = editor.getCaret();
     caret.setDot(pos.getPosition());
   }
+
+  public EditorSettings getSettings() {
+    new EditorSettings();  
+  }
 }

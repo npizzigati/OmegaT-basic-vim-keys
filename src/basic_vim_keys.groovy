@@ -3,20 +3,12 @@
  * @author: Nicholas Pizzigati
  */
 
-// Pressing tab in insert mode leads to screwy behavior (especially
-// when you subsequently go into normal mode)
+// TODO: add EditorSettings class to testing setup
+
+// TODO: w in normal mode isn't working right for numbers
 
 // deleteChars method should check to make sure end of deletion is
 // within range
-
-// When I use tab to advance segment, often the previous machine
-// translation match is inserted
-
-// KeyEvent doesn't guarantee that keyTyped will be issued after
-// keyPressed... is there a way we can deal with this?
-// Maybe check for an existing stroke with each, and the send stroke
-// to be routed? If we do this, how can we make sure stroke is
-// reset on each key press?
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
