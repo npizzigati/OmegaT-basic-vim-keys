@@ -3,8 +3,6 @@
  * @author: Nicholas Pizzigati
  */
 
-// DRY up code around #moveByWord
-
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
