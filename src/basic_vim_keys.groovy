@@ -3,6 +3,14 @@
  * @author: Nicholas Pizzigati
  */
 
+// When you enter a number of words for w in normal mode that
+// should send the cursor to the last character on the line,
+// it does not (it only sends you to the penultimate position.)
+
+// Change manager instance name to keyManager
+
+// Convert java regex to groovy in normal mode w
+
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
@@ -169,7 +177,7 @@ abstract class Mode {
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
 
   enum ModeID {
-    NORMAL, INSERT, VISUAL;
+    NORMAL, INSERT, VISUAL, OPERATOR_PENDING;
   }
 
   Mode(KeyManager manager) {
@@ -299,106 +307,57 @@ abstract class Mode {
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
-  static final int CNT_RANGE_START = (int)'1';
-  static final int CNT_RANGE_END = (int)'9';
   OperatorPendingMode operatorPendingMode;
   String count;
   int keyChar;
-  enum ToOrTill {
-    NONE, TO, TILL, TO_BACK, TILL_BACK;
-  }
-  ToOrTill toOrTill;
 
   NormalMode(KeyManager manager) {
     super(manager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    resetCount();
-    operatorPendingMode = new OperatorPendingMode();
-    toOrTill = ToOrTill.NONE;
+    // resetCount();
   }
 
-  boolean toOrTillPending() {
-    toOrTill != ToOrTill.NONE;
-  }
 
-  void executeToOrTill(keyChar) {
-    int number = count ? count.toInteger() : 1;
-    switch (toOrTill) {
-      case ToOrTill.TO:
-        manager.goForwardToChar(keyChar, number);
-        break;
-    }
-    toOrTill = ToOrTill.NONE;
-    resetCount();
-  }
+  // void executeToOrTill(keyChar) {
+  //   int number = count ? count.toInteger() : 1;
+  //   switch (toOrTill) {
+  //     case ToOrTill.TO:
+  //       manager.goForwardToChar(keyChar, number);
+  //       break;
+  //   }
+  //   toOrTill = ToOrTill.NONE;
+  //   // resetCount();
+  // }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
-    if (toOrTillPending()) {
-      executeToOrTill(keyChar);
-      return;
-    }
-    switch (keyChar) {
-      case (int)'i':
-        manager.switchTo(Mode.ModeID.INSERT);
-        resetCount();
-        break;
-      case (int)'t':
-        toOrTill = ToOrTill.TILL
-        break;
-      case (int)'f':
-        toOrTill = ToOrTill.TO
-        break;
-      case (int)'h':
-        int positionChange = count ? -(count.toInteger()) : -1;
-        manager.moveCaret(positionChange);
-        resetCount();
-        break;
-      case (int)'l':
-        int positionChange = count ? count.toInteger() : 1;
-        manager.moveCaret(positionChange);
-        resetCount();
-        break;
-      case (int)'w':
-        int number = count ? count.toInteger() : 1;
-        manager.moveByWord(number);
-        resetCount();
-        break;
-      case (int)'x':
-        int number = count ? count.toInteger() : 1;
-        manager.deleteChars(number);
-        resetCount();
-        break;
-      case (int)'0':
-        if (count == "") {
-          manager.moveToLineStart();
-        } else {
-          count = count + (char)keyChar;
-        }
-        break;
-      case (int)'$':
-        manager.moveToLineEnd();
-        break;
-      case (CNT_RANGE_START..CNT_RANGE_END):
-        count = count + (char)keyChar;
-        break;
+    if (keyChar == (int)'i') {
+      manager.switchTo(ModeID.INSERT);
+    } else if (keyChar == (int)'d') {
+      manager.switchTo(ModeID.OPERATOR_PENDING);
+    } else {
+      manager.registerActionKey((char)keyChar);
     }
   }
-
-  void resetCount() {
-    count = "";
-  }
-
-  class OperatorPendingMode {
-    void execute(Stroke stroke) {
-      if((1..9).contains(stroke.keyTyped.getKeyChar())) {
-        // Do something;
-      }
-    }
-  }
-
 }
+
+class OperatorPendingMode extends Mode {
+  static final int REMAP_TIMEOUT = 900; // In milliseconds
+
+  OperatorPendingMode(KeyManager manager) {
+    super(manager);
+    // userEnteredRemaps = [:];
+    // remaps = tokenizeUserEnteredRemaps();
+  }
+
+  void execute(Stroke stroke) {
+    if((1..9).contains(stroke.keyTyped.getKeyChar())) {
+      // Do something;
+    }
+  }
+}
+
 
 class InsertMode extends Mode {
   static final int REMAP_TIMEOUT = 20; // In milliseconds
@@ -428,7 +387,7 @@ class VisualMode extends Mode {
   void execute(Stroke stroke) {
     switch (keyChar) {
       case 'i':
-        manager.switchTo(Mode.ModeID.INSERT);
+        manager.switchTo(ModeID.INSERT);
         break;
       case 'h':
         manager.moveCaret(-1)
@@ -448,7 +407,9 @@ class KeyManager {
   Mode normalMode;
   Mode insertMode;
   Mode visualMode;
+  Mode operatorPendingMode;
   Mode currentMode;
+  ActionManager actionManager;
   boolean isRemapDispatchUnderway;
   EditorController editor;
   static EditorTextArea3 pane;
@@ -459,10 +420,12 @@ class KeyManager {
     normalMode = new NormalMode(this);
     insertMode = new InsertMode(this);
     visualMode = new VisualMode(this);
+    operatorPendingMode = new OperatorPendingMode(this);
+    actionManager = new ActionManager(this, editor);
     currentMode = normalMode;
   }
 
-  void switchTo(modeID) {
+  void switchTo(Mode.ModeID modeID) {
     switch(modeID) {
       case modeID.NORMAL: // Can this just be NORMAL?
         currentMode = normalMode;
@@ -475,6 +438,10 @@ class KeyManager {
       case modeID.VISUAL:
         currentMode = visualMode;
         println('Switching to visual mode')
+        break;
+      case modeID.OPERATOR_PENDING: // can this just be INSERT?
+        currentMode = operatorPendingMode;
+        println('Switching to operator pending mode')
         break;
     }
   }
@@ -496,6 +463,10 @@ class KeyManager {
     }
   }
 
+  void registerActionKey(char actionKey) {
+    actionManager.processActionKey(actionKey);
+  }
+
   boolean ctrlPressed(Stroke stroke) {
     if (!!(stroke.keyPressed)) {
       return ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
@@ -506,106 +477,6 @@ class KeyManager {
 
   boolean isDelete(int key) {
     key == 127;
-  }
-
-  void testSelection() {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    int positionChange = 2;
-    IEditor.CaretPosition caret = new IEditor.CaretPosition(currentPos,
-                                            currentPos + positionChange);
-    editor.setCaretPosition(caret);
-  }
-
-  void deleteChars(int number) {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    String text = editor.getCurrentTranslation();
-    int length = text.length();
-
-    int deleteStart = currentPos;
-    int deleteEnd = currentPos + number
-
-    if (deleteEnd > length) {
-      deleteEnd = length
-    }
-
-    editor.replacePartOfText('', deleteStart, deleteEnd);
-  }
-
-  void placeCaret(newPos) {
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
-    editor.setCaretPosition(caretPosition);
-  }
-
-  void moveByWord(int number) {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    String text = editor.getCurrentTranslation();
-    int length = text.length();
-
-    // String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
-    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
-    Pattern pattern = Pattern.compile(candidateRegex);
-    Matcher matcher = pattern.matcher(text);
-    List matches = getMatches(text, candidateRegex);
-
-    List candidates = matches.findAll { it > currentPos };
-    int endIndex = (!!candidates) ? candidates[-1] : length - 1
-    int newPos = (candidates[number - 1]) ?: endIndex;
-
-    placeCaret(newPos);
-  }
-
-  boolean stopPositionIsSpace(String text, int stopPos, int length) {
-    int index = (stopPos == length) ? stopPos - 1 : stopPos;
-    (text[index] ==~ /\s/);
-  }
-
-  void goForwardToChar(int key, int number) {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    String text = editor.getCurrentTranslation();
-    int length = text.length();
-    String candidateRegex = (char)key
-    List matches = getMatches(text, candidateRegex);
-    List candidates = matches.findAll { it > currentPos };
-
-    int newPos = (candidates[number - 1]) ?: currentPos;
-
-    placeCaret(newPos);
-  }
-
-  List getMatches(String text, String candidateRegex) {
-    Pattern pattern = Pattern.compile(candidateRegex);
-    Matcher matcher = pattern.matcher(text);
-    List matches = [];
-
-    while (matcher.find()) {
-      matches << matcher.start();
-    }
-    return matches;
-  }
-
-  void moveCaret(int positionChange) {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    int newPos = currentPos + positionChange;
-    int lineLength = editor.getCurrentTranslation().length();
-
-    if (newPos < 0) {
-      newPos = 0;
-    } else if (newPos > lineLength) {
-      newPos = lineLength;
-    }
-
-    placeCaret(newPos);
-  }
-
-  void moveToLineStart() {
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(0);
-    editor.setCaretPosition(caretPosition);
-  }
-
-  void moveToLineEnd() {
-    int endCaretPosition = editor.getCurrentTranslation().length();
-
-    placeCaret(newPos);
   }
 
   void batchRedispatchStrokes(List queue) {
@@ -666,6 +537,176 @@ class KeyManager {
     println "Redispatching stroke: (keyTyped: ${(int)(stroke.keyTyped.getKeyChar())})\n";
     redispatchEventToPane(stroke.getKeyPressed());
     redispatchEventToPane(stroke.getKeyTyped());
+  }
+
+}
+
+class ActionManager {
+  String actionKeys;
+  KeyManager keyManager;
+  EditorController editor;
+
+  ActionManager(KeyManager keyManager, EditorController editor) {
+    this.keyManager = keyManager;
+    this.editor = editor;
+  }
+
+  void processActionKey(char actionKey) {
+    actionKeys = (actionKeys != null) ? actionKeys += actionKey : actionKey;
+    println "actionKeys: $actionKeys"
+    String nonCountKeys = removeCountKeys(actionKeys);
+    println "nonCountKeys: $nonCountKeys"
+
+    Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
+                   (/^l$/):    { cnt -> moveCaret(cnt) },
+                   (/^h$/):    { cnt -> moveCaret(-cnt) },
+                   (/^0$/):    { moveToLineStart() },
+                   (/^\$$/):   { moveToLineEnd() },
+                   (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
+                   (/^x$/):    { cnt -> deleteChars(cnt) }]
+
+    String match = actionMatch(actions, nonCountKeys);
+    if (match) {
+      int count = calculateCount(actionKeys);
+      trigger(actions[match], count, nonCountKeys);
+      actionKeys = ''
+    }
+  }
+
+  String removeCountKeys(String actionKeys) {
+    return actionKeys.replaceAll(/[1-9]|(?<=[1-9])0/, '')
+  }
+
+  int calculateCount(actionKeys) {
+    int count = 1
+    def matcher = actionKeys =~ /[0-9]+/
+    int numberOfMatches = matcher.size()
+    if (numberOfMatches == 1 && matcher[0] != '0')  {
+      count = matcher[0].toInteger();
+    } else if (numberOfMatches == 2) {
+      count = matcher[0].toInteger() * matcher[1].toInteger();
+    }
+    return count
+  }
+
+  def actionMatch(Map actions, String nonCountKeys) {
+    // actions.keySet().any { mapKey -> nonCountKeys =~ mapKey }
+    actions.keySet().find { mapKey -> nonCountKeys =~ mapKey }
+    // boolean flag = false
+    // actions.keySet().each { mapKey ->
+    //   // println "mapKey: $mapKey"
+    //   if (nonCountKeys =~ mapKey) {
+    //     println "matched $mapKey"
+    //     flag = true
+    //   }
+    // }
+    // return flag
+  }
+
+  void trigger(Closure action, int count, String nonCountKeys) {
+    String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
+                                                  : null
+    (targetKey) ? action.call(count, targetKey) : action.call(count);
+  }
+
+  void testSelection() {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    int positionChange = 2;
+    IEditor.CaretPosition caret = new IEditor.CaretPosition(currentPos,
+                                            currentPos + positionChange);
+    editor.setCaretPosition(caret);
+  }
+
+  void deleteChars(int number) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+
+    int deleteStart = currentPos;
+    int deleteEnd = currentPos + number
+
+    if (deleteEnd > length) {
+      deleteEnd = length
+    }
+
+    editor.replacePartOfText('', deleteStart, deleteEnd);
+  }
+
+  void placeCaret(newPos) {
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  void moveByWord(int number) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+
+    // String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
+    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
+    Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = getMatches(text, candidateRegex);
+
+    List candidates = matches.findAll { it > currentPos };
+    int endIndex = (!!candidates) ? candidates[-1] : length - 1
+    int newPos = (candidates[number - 1]) ?: endIndex;
+
+    placeCaret(newPos);
+  }
+
+  boolean stopPositionIsSpace(String text, int stopPos, int length) {
+    int index = (stopPos == length) ? stopPos - 1 : stopPos;
+    (text[index] ==~ /\s/);
+  }
+
+  void goForwardToChar(int number, String key) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = key
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it > currentPos };
+
+    int newPos = (candidates[number - 1]) ?: currentPos;
+
+    placeCaret(newPos);
+  }
+
+  List getMatches(String text, String candidateRegex) {
+    Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = [];
+
+    while (matcher.find()) {
+      matches << matcher.start();
+    }
+    return matches;
+  }
+
+  void moveCaret(int positionChange) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    int newPos = currentPos + positionChange;
+    int lineLength = editor.getCurrentTranslation().length();
+
+    if (newPos < 0) {
+      newPos = 0;
+    } else if (newPos > lineLength) {
+      newPos = lineLength;
+    }
+
+    placeCaret(newPos);
+  }
+
+  void moveToLineStart() {
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(0);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  void moveToLineEnd() {
+    int endCaretPosition = editor.getCurrentTranslation().length();
+
+    placeCaret(endCaretPosition);
   }
 
 }
