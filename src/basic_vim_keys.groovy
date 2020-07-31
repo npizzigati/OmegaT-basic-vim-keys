@@ -7,9 +7,14 @@
 // should send the cursor to the last character on the line,
 // it does not (it only sends you to the penultimate position.)
 
-// Change manager instance name to keyManager
+// Convert java regex to groovy regex in normal mode w method
 
-// Convert java regex to groovy in normal mode w
+// Too much casting in mode functions. Should I have a hash with
+// the different char values, e.g. Letters['a'] instead of (int)'a' 
+
+// When action keys don't match in normal mode, they just keep on
+// accumulated. This need to reset somehow
+
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
@@ -23,7 +28,6 @@ import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
 import org.omegat.gui.editor.EditorSettings;
 
-
 class InterruptException extends Exception {
   InterruptException(){
     super();
@@ -34,6 +38,14 @@ class InterruptException extends Exception {
   }
 }
 
+enum ModeID {
+  NORMAL, INSERT, VISUAL, OPERATOR_PENDING;
+}
+
+enum Operator {
+  DELETE, CHANGE, YANK, NONE;
+}
+
 class Listener implements KeyListener {
   // char keyChar;
   EditorTextArea3 pane;
@@ -42,7 +54,7 @@ class Listener implements KeyListener {
   KeyEvent lastKeyTyped;
   KeyEvent lastConsumedKeyPressed;
   KeyEvent lastConsumedKeyTyped;
-  KeyManager manager;
+  KeyManager keyManager;
   Stroke stroke;
   
   static final FAKE_REDISPATCH_DELAY = 50;
@@ -52,7 +64,7 @@ class Listener implements KeyListener {
     this.pane = pane;
     lastKeyPressed = null;
     lastKeyTyped = null;
-    manager = new KeyManager(editor, pane);
+    keyManager = new KeyManager(editor, pane);
     editorSettings = editor.getSettings();
     startListening();
   }
@@ -95,7 +107,7 @@ class Listener implements KeyListener {
       storeLastConsumed();
       resetKeyEvents();
       try {
-        manager.route(stroke);
+        keyManager.route(stroke);
       } catch (InterruptException e) {
         stopListening();
         println e.message;
@@ -115,12 +127,12 @@ class Listener implements KeyListener {
     println "keyTyped time: ${event.getWhen()}";
 
     // If remap dispatch underway, there will be no keyPressed event
-    if(lastKeyPressed || manager.isRemapDispatchUnderway) {
+    if(lastKeyPressed || keyManager.isRemapDispatchUnderway) {
       stroke = new Stroke(lastKeyPressed, lastKeyTyped);
       storeLastConsumed();
       resetKeyEvents();
       try {
-        manager.route(stroke);
+        keyManager.route(stroke);
       } catch (InterruptException e) {
         stopListening();
         println e.message;
@@ -163,7 +175,7 @@ class Stroke {
 }
 
 abstract class Mode {
-  KeyManager manager;
+  KeyManager keyManager;
   // userEnteredRemaps is temporary -- these will be retrieved
   // from user or configuration file
   Map userEnteredRemaps;
@@ -176,12 +188,9 @@ abstract class Mode {
   Thread remapTimeoutThread;
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
 
-  enum ModeID {
-    NORMAL, INSERT, VISUAL, OPERATOR_PENDING;
-  }
 
-  Mode(KeyManager manager) {
-    this.manager = manager;
+  Mode(KeyManager keyManager) {
+    this.keyManager = keyManager;
     resetAccumulatedStrokes();
     resetRemapCandidates();
     remapDispatchQueue = [];
@@ -235,7 +244,7 @@ abstract class Mode {
   void invokeLaterDispatch(List queue) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        manager.batchRedispatchStrokes(queue);
+        keyManager.batchRedispatchStrokes(queue);
       }
     });
   }
@@ -248,7 +257,7 @@ abstract class Mode {
         resetAccumulatedStrokes();
         resetRemapCandidates();
         remapTimeoutThread.interrupt();
-        manager.dispatchRemapMatchKeys(remapMatch.clone());
+        keyManager.dispatchRemapMatchKeys(remapMatch.clone());
       }
   }
 
@@ -276,7 +285,7 @@ abstract class Mode {
 
   void refireNonRemappedStrokes() {
     strokeDispatchQueue = (strokeDispatchQueue << accumulatedStrokes.values()).flatten();
-    manager.batchRedispatchStrokes(strokeDispatchQueue.clone());
+    keyManager.batchRedispatchStrokes(strokeDispatchQueue.clone());
     resetAccumulatedStrokes();
   }
 
@@ -307,54 +316,60 @@ abstract class Mode {
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
-  OperatorPendingMode operatorPendingMode;
-  String count;
   int keyChar;
+  int previousChar;
 
-  NormalMode(KeyManager manager) {
-    super(manager);
+  NormalMode(KeyManager keyManager) {
+    super(keyManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    // resetCount();
   }
-
-
-  // void executeToOrTill(keyChar) {
-  //   int number = count ? count.toInteger() : 1;
-  //   switch (toOrTill) {
-  //     case ToOrTill.TO:
-  //       manager.goForwardToChar(keyChar, number);
-  //       break;
-  //   }
-  //   toOrTill = ToOrTill.NONE;
-  //   // resetCount();
-  // }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
-    if (keyChar == (int)'i') {
-      manager.switchTo(ModeID.INSERT);
+    if (isToOrTill()) {
+      keyManager.registerActionKey((char)keyChar);
+    } else if (keyChar == (int)'i') {
+      keyManager.switchTo(ModeID.INSERT);
     } else if (keyChar == (int)'d') {
-      manager.switchTo(ModeID.OPERATOR_PENDING);
+      keyManager.switchTo(ModeID.OPERATOR_PENDING);
+      keyManager.setOperator(Operator.DELETE);
     } else {
-      manager.registerActionKey((char)keyChar);
+      keyManager.registerActionKey((char)keyChar);
     }
+    previousChar = keyChar;
+  }
+
+  boolean isToOrTill() {
+    [(int)'f', (int)'F', (int)'t', (int)'T'].contains(previousChar);
   }
 }
 
 class OperatorPendingMode extends Mode {
   static final int REMAP_TIMEOUT = 900; // In milliseconds
+  Operator operator;
+  int keyChar;
+  int previousChar;
 
-  OperatorPendingMode(KeyManager manager) {
-    super(manager);
-    // userEnteredRemaps = [:];
-    // remaps = tokenizeUserEnteredRemaps();
+  OperatorPendingMode(KeyManager keyManager) {
+    super(keyManager);
+    userEnteredRemaps = [:];
+    remaps = tokenizeUserEnteredRemaps();
   }
 
   void execute(Stroke stroke) {
-    if((1..9).contains(stroke.keyTyped.getKeyChar())) {
-      // Do something;
+    keyChar = (int)stroke.keyTyped.getKeyChar();
+
+    if (isToOrTill()) {
+      keyManager.registerActionKey((char)keyChar);
+    } else {
+      keyManager.registerActionKey((char)keyChar);
     }
+    previousChar = keyChar;
+  }
+
+  boolean isToOrTill() {
+    [(int)'f', (int)'F', (int)'t', (int)'T'].contains(previousChar);
   }
 }
 
@@ -362,24 +377,24 @@ class OperatorPendingMode extends Mode {
 class InsertMode extends Mode {
   static final int REMAP_TIMEOUT = 20; // In milliseconds
 
-  InsertMode(KeyManager manager) {
-    super(manager);
+  InsertMode(KeyManager keyManager) {
+    super(keyManager);
     userEnteredRemaps = ['ei': '<Esc>', 'ie': '<Esc>'];
     remaps = tokenizeUserEnteredRemaps();
   }
 
   void execute(Stroke stroke) {
     if ((int)stroke.keyTyped.getKeyChar() == KeyEvent.VK_ESCAPE) {
-      manager.switchTo(ModeID.NORMAL)
+      keyManager.switchTo(ModeID.NORMAL)
     } else {
-      manager.redispatchStroke(stroke);
+      keyManager.redispatchStrokeToPane(stroke);
     }
   }
 }
 
 class VisualMode extends Mode {
-  VisualMode(KeyManager manager) {
-    super(manager);
+  VisualMode(KeyManager keyManager) {
+    super(keyManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
   }
@@ -387,13 +402,13 @@ class VisualMode extends Mode {
   void execute(Stroke stroke) {
     switch (keyChar) {
       case 'i':
-        manager.switchTo(ModeID.INSERT);
+        keyManager.switchTo(ModeID.INSERT);
         break;
       case 'h':
-        manager.moveCaret(-1)
+        keyManager.moveCaret(-1)
         break;
       case 'l':
-        manager.moveCaret(1)
+        keyManager.moveCaret(1)
         break;
       case ('1'..'9'):
         // Store count in some sort of instance variable to
@@ -409,6 +424,7 @@ class KeyManager {
   Mode visualMode;
   Mode operatorPendingMode;
   Mode currentMode;
+  Operator operator;
   ActionManager actionManager;
   boolean isRemapDispatchUnderway;
   EditorController editor;
@@ -425,24 +441,42 @@ class KeyManager {
     currentMode = normalMode;
   }
 
-  void switchTo(Mode.ModeID modeID) {
+  void switchTo(ModeID modeID) {
+    // If swiching from operator pending mode, reset operator
+    // to none
+    if (operator != Operator.NONE) {
+        operator = Operator.NONE;
+    }
     switch(modeID) {
-      case modeID.NORMAL: // Can this just be NORMAL?
+      case ModeID.NORMAL:
         currentMode = normalMode;
         println('Switching to normal mode')
         break;
-      case modeID.INSERT: // can this just be INSERT?
+      case ModeID.INSERT:
         currentMode = insertMode;
         println('Switching to insert mode')
         break;
-      case modeID.VISUAL:
+      case ModeID.VISUAL:
         currentMode = visualMode;
         println('Switching to visual mode')
         break;
-      case modeID.OPERATOR_PENDING: // can this just be INSERT?
+      case ModeID.OPERATOR_PENDING:
         currentMode = operatorPendingMode;
         println('Switching to operator pending mode')
         break;
+    }
+  }
+
+  ModeID getCurrentModeID() {
+    switch(currentMode) {
+      case normalMode:
+        return ModeID.NORMAL;
+      case insertMode:
+        return ModeID.INSERT;
+      case visualMode:
+        return ModeID.VISUAL;
+      case operatorPendingMode:
+        return ModeID.OPERATOR_PENDING;
     }
   }
 
@@ -457,7 +491,7 @@ class KeyManager {
     // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
     if ((isDelete(key)) || ctrlPressed(stroke)) {
-      redispatchStroke(stroke);
+      redispatchStrokeToPane(stroke);
     } else {
       currentMode.process(stroke);
     }
@@ -465,6 +499,14 @@ class KeyManager {
 
   void registerActionKey(char actionKey) {
     actionManager.processActionKey(actionKey);
+  }
+
+  void setOperator(Operator operator) {
+    this.operator = operator 
+  }
+
+  Operator getOperator() {
+    operator
   }
 
   boolean ctrlPressed(Stroke stroke) {
@@ -486,11 +528,19 @@ class KeyManager {
 
       // If remap dispatch underway, there will be no keyPressed
       // so no KeyPressed to redispatch
-      if (it.keyPressed) {
-        redispatchEventForProcessing(it.keyPressed);
-      }
-      redispatchEventForProcessing(it.keyTyped);
+      redispatchStrokeForProcessing(it);
+      // if (it.keyPressed) {
+      //   redispatchEventForProcessing(it.keyPressed);
+      // }
+      // redispatchEventForProcessing(it.keyTyped);
     }
+  }
+
+  void redispatchStrokeForProcessing(Stroke stroke) {
+    if (stroke.keyPressed) {
+      redispatchEventForProcessing(stroke.keyPressed);
+    }
+    redispatchEventForProcessing(stroke.keyTyped);
   }
 
   void dispatchRemapMatchKeys(List remapMatch) {
@@ -533,7 +583,7 @@ class KeyManager {
                                     event.getKeyChar()));
   }
 
-  void redispatchStroke(Stroke stroke) {
+  void redispatchStrokeToPane(Stroke stroke) {
     println "Redispatching stroke: (keyTyped: ${(int)(stroke.keyTyped.getKeyChar())})\n";
     redispatchEventToPane(stroke.getKeyPressed());
     redispatchEventToPane(stroke.getKeyTyped());
@@ -590,23 +640,16 @@ class ActionManager {
   }
 
   def actionMatch(Map actions, String nonCountKeys) {
-    // actions.keySet().any { mapKey -> nonCountKeys =~ mapKey }
     actions.keySet().find { mapKey -> nonCountKeys =~ mapKey }
-    // boolean flag = false
-    // actions.keySet().each { mapKey ->
-    //   // println "mapKey: $mapKey"
-    //   if (nonCountKeys =~ mapKey) {
-    //     println "matched $mapKey"
-    //     flag = true
-    //   }
-    // }
-    // return flag
   }
 
   void trigger(Closure action, int count, String nonCountKeys) {
     String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
                                                   : null
     (targetKey) ? action.call(count, targetKey) : action.call(count);
+    if (keyManager.getCurrentModeID() == ModeID.OPERATOR_PENDING) {
+      keyManager.switchTo(ModeID.NORMAL)
+    }
   }
 
   void testSelection() {
@@ -632,7 +675,17 @@ class ActionManager {
     editor.replacePartOfText('', deleteStart, deleteEnd);
   }
 
-  void placeCaret(newPos) {
+  void deleteToPos(int currentPos, int newPos) {
+    editor.replacePartOfText('', currentPos, newPos);
+  }
+  
+  void selectToPos(int currentPos, int newPos) {
+    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(currentPos,
+                                                                    newPos);
+    editor.setCaretPosition(caretPosition);
+  }
+
+  void placeCaret(int newPos) {
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(newPos);
     editor.setCaretPosition(caretPosition);
   }
@@ -642,7 +695,6 @@ class ActionManager {
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    // String candidateRegex = '(?=[^\\p{L}0-9])(?=\\S)|((?<=[^\\p{L}0-9])[\\p{L}0-9])'
     String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
     Pattern pattern = Pattern.compile(candidateRegex);
     Matcher matcher = pattern.matcher(text);
@@ -652,7 +704,13 @@ class ActionManager {
     int endIndex = (!!candidates) ? candidates[-1] : length - 1
     int newPos = (candidates[number - 1]) ?: endIndex;
 
-    placeCaret(newPos);
+    if (keyManager.getOperator() == Operator.DELETE) {
+      deleteToPos(currentPos, newPos)
+    } else if (keyManager.getCurrentModeID() == ModeID.VISUAL) {
+      selectToPos(currentPos, newPos)
+    } else {
+      placeCaret(newPos);
+    }
   }
 
   boolean stopPositionIsSpace(String text, int stopPos, int length) {
