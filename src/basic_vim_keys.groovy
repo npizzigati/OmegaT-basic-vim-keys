@@ -355,7 +355,6 @@ class NormalMode extends Mode {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
     } else if (/[0-9wlhPpftx]/ =~ (char)keyChar) {
-      println "pass to action keyChar: $keyChar"
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -383,7 +382,7 @@ class OperatorPendingMode extends Mode {
 
     if (isToOrTill()) {
       keyManager.registerActionKey((char)keyChar);
-    } else {
+    } else if (/[0-9wlhPpftx]/ =~ (char)keyChar) {
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -792,7 +791,7 @@ class ActionManager {
 
     int newPos = (candidates[number - 1]) ?: currentPos;
 
-    executeGoForwardToOperation(currentPos, newPos)
+    executeGoForwardToOperation(currentPos, newPos, text)
   }
 
   List getMatches(String text, String candidateRegex) {
