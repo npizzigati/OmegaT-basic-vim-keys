@@ -354,7 +354,8 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
-    } else {
+    } else if (/[0-9wlhPpftx]/ =~ (char)keyChar) {
+      println "pass to action keyChar: $keyChar"
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
