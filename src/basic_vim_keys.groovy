@@ -3,9 +3,23 @@
  * @author: Nicholas Pizzigati
  */
 
-// When you enter a number of words for w in normal mode that
-// should send the cursor to the last character on the line,
-// it does not (it only sends you to the penultimate position.)
+// Implement yank -- have the yank be reflected in the clipboard (but have this be an option)
+
+// Don't do weird stuff if non-implemented keys are pressed in normal mode
+
+// Cursor shape
+
+// GoForwardTo and GoForwardTill are the same method. GoForwardTo
+// with Operator.DELETE should delete up to and including the
+// specified letter, etc.
+
+// Can I make normal-mode cursor a block?
+
+// Need to implement registerInsertAfter method
+// Need to make fake editor.insertText method
+
+// Related to the above, probably, delete word doesn't delete the
+// final character in a segment.
 
 // Convert java regex to groovy regex in normal mode w method
 
@@ -13,7 +27,7 @@
 // the different char values, e.g. Letters['a'] instead of (int)'a' 
 
 // When action keys don't match in normal mode, they just keep on
-// accumulated. This need to reset somehow
+// accumulating. This needs to reset somehow
 
 
 import java.awt.event.KeyListener;
@@ -334,6 +348,12 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'d') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.DELETE);
+    } else if (keyChar == (int)'c') {
+      keyManager.switchTo(ModeID.OPERATOR_PENDING);
+      keyManager.setOperator(Operator.CHANGE);
+    } else if (keyChar == (int)'y') {
+      keyManager.switchTo(ModeID.OPERATOR_PENDING);
+      keyManager.setOperator(Operator.YANK);
     } else {
       keyManager.registerActionKey((char)keyChar);
     }
@@ -373,7 +393,6 @@ class OperatorPendingMode extends Mode {
   }
 }
 
-
 class InsertMode extends Mode {
   static final int REMAP_TIMEOUT = 20; // In milliseconds
 
@@ -409,10 +428,6 @@ class VisualMode extends Mode {
         break;
       case 'l':
         keyManager.moveCaret(1)
-        break;
-      case ('1'..'9'):
-        // Store count in some sort of instance variable to
-        // be used in operator mode
         break;
     }
   }
@@ -595,10 +610,12 @@ class ActionManager {
   String actionKeys;
   KeyManager keyManager;
   EditorController editor;
+  Register register;
 
   ActionManager(KeyManager keyManager, EditorController editor) {
     this.keyManager = keyManager;
     this.editor = editor;
+    this.register = new Register();
   }
 
   void processActionKey(char actionKey) {
@@ -610,9 +627,12 @@ class ActionManager {
     Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
                    (/^l$/):    { cnt -> moveCaret(cnt) },
                    (/^h$/):    { cnt -> moveCaret(-cnt) },
+                   (/^P$/):    { cnt -> registerInsertBefore(cnt) },
+                   (/^p$/):    { cnt -> registerInsertAfter(cnt) },
                    (/^0$/):    { moveToLineStart() },
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
+                   (/^t.$/):   { cnt, key -> goForwardTillChar(cnt, key) },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
     String match = actionMatch(actions, nonCountKeys);
@@ -660,6 +680,19 @@ class ActionManager {
     editor.setCaretPosition(caret);
   }
 
+  void registerInsertBefore(int count) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String pullContent = register.getContent();
+    editor.insertText(pullContent);
+  }
+
+  void registerInsertAfter(int count) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    placeCaret(currentPos + 1);
+    String pullContent = register.getContent();
+    editor.insertText(pullContent);
+  }
+
   void deleteChars(int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
@@ -679,6 +712,11 @@ class ActionManager {
     editor.replacePartOfText('', currentPos, newPos);
   }
   
+  void changeToPos(int currentPos, int newPos) {
+    deleteToPos(currentPos, newPos)
+    keyManager.switchTo(ModeID.INSERT)
+  }
+
   void selectToPos(int currentPos, int newPos) {
     IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(currentPos,
                                                                     newPos);
@@ -701,13 +739,25 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    int endIndex = (!!candidates) ? candidates[-1] : length - 1
+    int endIndex = (!!candidates) ? candidates[-1] : length
     int newPos = (candidates[number - 1]) ?: endIndex;
 
+    executeGoForwardToOperation(currentPos, newPos, text)
+
+  }
+
+  void executeGoForwardToOperation(int currentPos, int newPos,
+                                   String text) {
     if (keyManager.getOperator() == Operator.DELETE) {
-      deleteToPos(currentPos, newPos)
+      register.push(text[currentPos..(newPos - 1)]);
+      deleteToPos(currentPos, newPos);
+    } else if (keyManager.getOperator() == Operator.CHANGE) {
+      register.push(text[currentPos..(newPos - 1)]);
+      changeToPos(currentPos, newPos);
+    } else if (keyManager.getOperator() == Operator.YANK) {
+      register.push(text[currentPos..(newPos - 1)]);
     } else if (keyManager.getCurrentModeID() == ModeID.VISUAL) {
-      selectToPos(currentPos, newPos)
+      selectToPos(currentPos, newPos);
     } else {
       placeCaret(newPos);
     }
@@ -728,7 +778,20 @@ class ActionManager {
 
     int newPos = (candidates[number - 1]) ?: currentPos;
 
-    placeCaret(newPos);
+    executeGoForwardToOperation(currentPos, newPos, text)
+  }
+
+  void goForwardTillChar(int number, String key) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = key
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it > currentPos };
+
+    int newPos = (candidates[number - 1]) ?: currentPos;
+
+    executeGoForwardToOperation(currentPos, newPos)
   }
 
   List getMatches(String text, String candidateRegex) {
@@ -766,7 +829,18 @@ class ActionManager {
 
     placeCaret(endCaretPosition);
   }
+}
 
+class Register {
+  String content;
+
+  void push(String yankContent) {
+    content = yankContent
+  }
+
+  String getContent() {
+    content;
+  } 
 }
 
 if (binding.hasVariable('testing')) {
