@@ -26,10 +26,6 @@
 // Too much casting in mode functions. Should I have a hash with
 // the different char values, e.g. Letters['a'] instead of (int)'a' 
 
-// When action keys don't match in normal mode, they just keep on
-// accumulating. This needs to reset somehow
-
-
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.regex.Pattern;
@@ -342,6 +338,7 @@ class NormalMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
     if (isToOrTill()) {
+      println "Is to or till"
       keyManager.registerActionKey((char)keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
@@ -354,7 +351,8 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
-    } else if (/[0-9wlhPpftx]/ =~ (char)keyChar) {
+    } else if ((char)keyChar =~ /[\dwlhPpftx]/) {
+      println "Registering action key"
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -632,25 +630,28 @@ class ActionManager {
                    (/^0$/):    { moveToLineStart() },
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
-                   (/^t.$/):   { cnt, key -> goForwardTillChar(cnt, key) },
+                   (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
       int count = calculateCount(actionKeys);
+      println "count: $count"
       trigger(actions[match], count, nonCountKeys);
       actionKeys = ''
     }
   }
 
   String removeCountKeys(String actionKeys) {
-    return actionKeys.replaceAll(/[1-9]|(?<=[1-9])0/, '')
+    return actionKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
   }
 
   int calculateCount(actionKeys) {
+    println "calculating count"
     int count = 1
-    def matcher = actionKeys =~ /[0-9]+/
+    def matcher = actionKeys =~ /(?<![fFtT])[0-9]+/
     int numberOfMatches = matcher.size()
+    println "number of matches: $numberOfMatches"
     if (numberOfMatches == 1 && matcher[0] != '0')  {
       count = matcher[0].toInteger();
     } else if (numberOfMatches == 2) {
@@ -772,20 +773,7 @@ class ActionManager {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = key
-    List matches = getMatches(text, candidateRegex);
-    List candidates = matches.findAll { it > currentPos };
-
-    int newPos = (candidates[number - 1]) ?: currentPos;
-
-    executeGoForwardToOperation(currentPos, newPos, text)
-  }
-
-  void goForwardTillChar(int number, String key) {
-    int currentPos = editor.getCurrentPositionInEntryTranslation();
-    String text = editor.getCurrentTranslation();
-    int length = text.length();
-    String candidateRegex = key
+    String candidateRegex = "[$key]"
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
 
