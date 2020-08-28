@@ -1,13 +1,10 @@
 /* :name=Basic Vim Keys :description=Basic Vim keys for OmegaT editor pane
  *
- * @author: Nicholas Pizzigati
+ * @author: Nick Pizzigati
  */
 
-// Implement yank -- have the yank be reflected in the clipboard (but have this be an option)
-
-// Don't do weird stuff if non-implemented keys are pressed in normal mode
-
-// Cursor shape
+// TODO:
+// have yank be reflected in the clipboard (but have this be an option)
 
 // GoForwardTo and GoForwardTill are the same method. GoForwardTo
 // with Operator.DELETE should delete up to and including the
