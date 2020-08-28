@@ -220,5 +220,4 @@ class VimKeysTest extends GroovyTestCase {
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
-
 }
