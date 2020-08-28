@@ -101,13 +101,10 @@ class Listener implements KeyListener {
   // in the future
   void keyPressed(KeyEvent event) {
     if(isRedispatchedEvent(event) || event.isActionKey() || isIgnoredTab(event)) {
-      println "\nLetting keyPressed event ${event.getKeyCode()} pass through"
-      println "keyPressed time: ${event.getWhen()}";
       return; //This will allow event to pass on to pane
     }
 
     lastKeyPressed = event;
-    println "\nkeyPressed time: ${event.getWhen()}";
 
     if(lastKeyTyped) {
       stroke = new Stroke(lastKeyPressed, lastKeyTyped);
@@ -125,13 +122,10 @@ class Listener implements KeyListener {
 
   void keyTyped(KeyEvent event) {
     if(isRedispatchedEvent(event) || isIgnoredTab(event)) {
-      println "Letting keyTyped event pass through"
-      println "keyTyped time: ${event.getWhen()}";
       return;
     }
 
     lastKeyTyped = event;
-    println "keyTyped time: ${event.getWhen()}";
 
     // If remap dispatch underway, there will be no keyPressed event
     if(lastKeyPressed || keyManager.isRemapDispatchUnderway) {
@@ -220,7 +214,6 @@ abstract class Mode {
 
   void process(Stroke stroke) {
     if (strokeDispatchQueue) {
-      println "dispatching from strokeDispatchQueue";
       execute(stroke);
       strokeDispatchQueue.pop();
       return;
@@ -237,7 +230,6 @@ abstract class Mode {
     if (remapCandidates) {
       handlePossibleRemapMatch();
     } else {
-      println "refiring non-remapped stroke";
       refireNonRemappedStrokes();
     }
   }
@@ -308,8 +300,6 @@ abstract class Mode {
     remaps.findAll { k, v ->
       int candidate_size = accumulatedStrokes.size();
       int end_idx = candidate_size - 1;
-      println "acc strokes keyset: ${accumulatedStrokes.keySet()}";
-      println "remapped keys matching size: ${k[0..end_idx]}";
       k[0..end_idx] == accumulatedStrokes.keySet() as List;
     }
   }
@@ -335,7 +325,6 @@ class NormalMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
     if (isToOrTill()) {
-      println "Is to or till"
       keyManager.registerActionKey((char)keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
@@ -349,7 +338,6 @@ class NormalMode extends Mode {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
     } else if ((char)keyChar =~ /[\dwlhPpftx]/) {
-      println "Registering action key"
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -594,7 +582,6 @@ class KeyManager {
   }
 
   void redispatchStrokeToPane(Stroke stroke) {
-    println "Redispatching stroke: (keyTyped: ${(int)(stroke.keyTyped.getKeyChar())})\n";
     redispatchEventToPane(stroke.getKeyPressed());
     redispatchEventToPane(stroke.getKeyTyped());
   }
@@ -615,9 +602,7 @@ class ActionManager {
 
   void processActionKey(char actionKey) {
     actionKeys = (actionKeys != null) ? actionKeys += actionKey : actionKey;
-    println "actionKeys: $actionKeys"
     String nonCountKeys = removeCountKeys(actionKeys);
-    println "nonCountKeys: $nonCountKeys"
 
     Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
                    (/^l$/):    { cnt -> moveCaret(cnt) },
@@ -633,7 +618,6 @@ class ActionManager {
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
       int count = calculateCount(actionKeys);
-      println "count: $count"
       trigger(actions[match], count, nonCountKeys);
       actionKeys = ''
     }
@@ -644,11 +628,9 @@ class ActionManager {
   }
 
   int calculateCount(actionKeys) {
-    println "calculating count"
     int count = 1
     def matcher = actionKeys =~ /(?<![fFtT])[0-9]+/
     int numberOfMatches = matcher.size()
-    println "number of matches: $numberOfMatches"
     if (numberOfMatches == 1 && matcher[0] != '0')  {
       count = matcher[0].toInteger();
     } else if (numberOfMatches == 2) {
