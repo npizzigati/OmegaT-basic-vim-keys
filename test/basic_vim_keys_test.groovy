@@ -151,7 +151,7 @@ class VimKeysTest extends GroovyTestCase {
     assertEquals(expected, actual);
   }
 
-  void testMoveCaretMultipleWordsatEnd() {
+  void testMoveCaretMultipleWordstoFinalPosition() {
     // Caret should move to end if number beyond last candidate
     Thread.sleep(50);
     setupShell();
@@ -159,7 +159,7 @@ class VimKeysTest extends GroovyTestCase {
     robotKeys += ' 0 4 w' 
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
-    int expected = 13
+    int expected = 14
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }

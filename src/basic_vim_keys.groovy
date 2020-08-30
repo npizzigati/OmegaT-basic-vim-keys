@@ -4,7 +4,11 @@
  */
 
 // TODO:
+
+// Delete word on last index gives out of range error
 // have yank be reflected in the clipboard (but have this be an option)
+
+// Implement undo
 
 // GoForwardTo and GoForwardTill are the same method. GoForwardTo
 // with Operator.DELETE should delete up to and including the
@@ -12,11 +16,7 @@
 
 // Can I make normal-mode cursor a block?
 
-// Need to implement registerInsertAfter method
 // Need to make fake editor.insertText method
-
-// Related to the above, probably, delete word doesn't delete the
-// final character in a segment.
 
 // Convert java regex to groovy regex in normal mode w method
 
@@ -25,15 +25,24 @@
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
+import java.awt.Graphics;
+import java.awt.Rectangle;
+import java.awt.FontMetrics;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+
 import javax.swing.JFrame;
 import javax.swing.JEditorPane;
 import javax.swing.SwingUtilities;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.BadLocationException;
+
 import org.omegat.gui.editor.IEditor;
 import org.omegat.gui.editor.EditorTextArea3;
 import org.omegat.gui.editor.EditorController;
 import org.omegat.gui.editor.EditorSettings;
+import org.omegat.util.Java8Compat;
+import org.omegat.util.gui.Styles;
 
 class InterruptException extends Exception {
   InterruptException(){
@@ -437,6 +446,11 @@ class KeyManager {
     operatorPendingMode = new OperatorPendingMode(this);
     actionManager = new ActionManager(this, editor);
     currentMode = normalMode;
+
+    // Custom switchable block/line caret for normal/insert mode
+    SwitchableCaret c = new SwitchableCaret();
+    c.setBlinkRate(pane.getCaret().getBlinkRate());
+    pane.setCaret(c);
   }
 
   void switchTo(ModeID modeID) {
@@ -448,18 +462,22 @@ class KeyManager {
     switch(modeID) {
       case ModeID.NORMAL:
         currentMode = normalMode;
+        switchCaretShape();
         println('Switching to normal mode')
         break;
       case ModeID.INSERT:
         currentMode = insertMode;
+        switchCaretShape();
         println('Switching to insert mode')
         break;
       case ModeID.VISUAL:
         currentMode = visualMode;
+        switchCaretShape();
         println('Switching to visual mode')
         break;
       case ModeID.OPERATOR_PENDING:
         currentMode = operatorPendingMode;
+        switchCaretShape();
         println('Switching to operator pending mode')
         break;
     }
@@ -475,6 +493,29 @@ class KeyManager {
         return ModeID.VISUAL;
       case operatorPendingMode:
         return ModeID.OPERATOR_PENDING;
+    }
+  }
+
+  void switchCaretShape() {
+    if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
+      // Change the caret shape, width and color
+      pane.setCaretColor(Styles.EditorColor.COLOR_BACKGROUND.getColor());
+      pane.putClientProperty("caretWidth", pane.getCaretWidth());
+  
+      // We need to force the caret damage to have the rectangle to correctly show up,
+      // otherwise half of the caret is shown.
+      try {
+        SwitchableCaret caret = (SwitchableCaret) pane.getCaret();
+        Rectangle r = Java8Compat.modelToView(pane, caret.getDot());
+        caret.damage(r);
+      } catch (BadLocationException e) {
+        e.printStackTrace();
+      }
+    } else {
+      // reset to default insert caret
+      println "resetting caret to default"
+      pane.setCaretColor(Styles.EditorColor.COLOR_FOREGROUND.getColor());
+      pane.putClientProperty("caretWidth", 1);
     }
   }
 
@@ -586,6 +627,45 @@ class KeyManager {
     redispatchEventToPane(stroke.getKeyTyped());
   }
 
+  private class SwitchableCaret extends DefaultCaret {
+    public void paint(Graphics g) {
+      if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
+        int caretWidth = getCaretWidth();
+        pane.putClientProperty("caretWidth", caretWidth);
+        g.setXORMode(Styles.EditorColor.COLOR_FOREGROUND.getColor());
+        g.translate(caretWidth / 2, 0);
+        super.paint(g);
+      } else {
+        super.paint(g);
+      }
+    }
+
+    public synchronized void damage(Rectangle r) {
+      if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
+        if (r != null) {
+          int damageWidth = getCaretWidth();
+          x = r.x - 4 - (damageWidth / 2);
+          y = r.y;
+          width = 9 + 3 * damageWidth / 2;
+          height = r.height;
+          repaint();
+        }
+      } else {
+        super.damage(r);
+      }
+    }
+
+    private int getCaretWidth() {
+      FontMetrics fm = pane.getFontMetrics(pane.getFont());
+      int carWidth = 1;
+      try {
+        carWidth = fm.stringWidth(pane.getText(pane.getCaretPosition(), 1));
+      } catch (BadLocationException e) {
+        /* empty */
+      }
+      return carWidth;
+    }
+  }
 }
 
 class ActionManager {
@@ -719,8 +799,11 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    int endIndex = length
+    println "currentPos $currentPos"
+    println "length $length"
+    int endIndex = (currentPos == length) ? length - 1 : length
     int newPos = (candidates[number - 1]) ?: endIndex;
+    println "newPos $newPos"
 
     executeGoForwardToOperation(currentPos, newPos, text)
 
@@ -793,7 +876,6 @@ class ActionManager {
 
   void moveToLineEnd() {
     int endCaretPosition = editor.getCurrentTranslation().length();
-
     placeCaret(endCaretPosition);
   }
 }
@@ -809,6 +891,7 @@ class Register {
     content;
   } 
 }
+
 
 if (binding.hasVariable('testing')) {
   editor = new EditorController();
