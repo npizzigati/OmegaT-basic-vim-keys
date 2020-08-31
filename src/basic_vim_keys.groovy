@@ -5,6 +5,19 @@
 
 // TODO:
 
+// d$ in normal mode just moves to line end instead of deleting
+// to line end
+
+// Caret not visible initially when I load script. It's only
+// visible on the first cursor move I make.
+
+// For tests, need to fake: org.omegat.util.Java8Compat
+// org.omegat.util.gui.Styles; which is difficult in the case of
+// Styles, because it imports a web of other OmegaT classes
+
+// Script can apparently run multiple times at the same time,
+// causing strange behavior. Need to prevent.
+
 // Delete word on last index gives out of range error
 // have yank be reflected in the clipboard (but have this be an option)
 
@@ -13,8 +26,6 @@
 // GoForwardTo and GoForwardTill are the same method. GoForwardTo
 // with Operator.DELETE should delete up to and including the
 // specified letter, etc.
-
-// Can I make normal-mode cursor a block?
 
 // Need to make fake editor.insertText method
 
@@ -346,7 +357,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
-    } else if ((char)keyChar =~ /[\dwlhPpftx]/) {
+    } else if ((char)keyChar =~ /[\dwlhPpftx$0]/) {
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -435,7 +446,7 @@ class KeyManager {
   ActionManager actionManager;
   boolean isRemapDispatchUnderway;
   EditorController editor;
-  static EditorTextArea3 pane;
+  EditorTextArea3 pane;
 
   KeyManager(EditorController editor, EditorTextArea3 editorPane) {
     this.editor = editor;
@@ -447,10 +458,26 @@ class KeyManager {
     actionManager = new ActionManager(this, editor);
     currentMode = normalMode;
 
-    // Custom switchable block/line caret for normal/insert mode
-    SwitchableCaret c = new SwitchableCaret();
-    c.setBlinkRate(pane.getCaret().getBlinkRate());
+    // Custom switchable shape cursor
+    // pane.
+    // int currentCaretPosition = pane.getCaret().getDot(); 
+    // how can I plug in the value of the above to keep the caret
+    // in the same position when I switch to vim editing mode
+    // ShapeShiftingCaret c = new ShapeShiftingCaret();
+
+    // Get pre-script caret position
+    int pos = pane.getCaretPosition();
+    ShapeShiftingCaret c = new ShapeShiftingCaret(this);
     pane.setCaret(c);
+
+    // Reset pre-script caret position
+    // Note that this EditorTextArea3#setCaretPosition (the
+    // standard JTextComponent method) is not the same method as
+    // EditorController#setCaretPosition
+    pane.setCaretPosition(pos);
+
+    // Are the next three lines needed?
+    switchCaretShape(ModeID.NORMAL);
   }
 
   void switchTo(ModeID modeID) {
@@ -459,25 +486,26 @@ class KeyManager {
     if (operator != Operator.NONE) {
         operator = Operator.NONE;
     }
+
+    switchCaretShape(modeID);
+    pane.repaint();
+    pane.revalidate();
+
     switch(modeID) {
       case ModeID.NORMAL:
         currentMode = normalMode;
-        switchCaretShape();
         println('Switching to normal mode')
         break;
       case ModeID.INSERT:
         currentMode = insertMode;
-        switchCaretShape();
         println('Switching to insert mode')
         break;
       case ModeID.VISUAL:
         currentMode = visualMode;
-        switchCaretShape();
         println('Switching to visual mode')
         break;
       case ModeID.OPERATOR_PENDING:
         currentMode = operatorPendingMode;
-        switchCaretShape();
         println('Switching to operator pending mode')
         break;
     }
@@ -496,8 +524,9 @@ class KeyManager {
     }
   }
 
-  void switchCaretShape() {
-    if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
+  void switchCaretShape(modeID) {
+    if ([ModeID.NORMAL, ModeID.OPERATOR_PENDING, ModeID.VISUAL]
+        .contains(modeID)) {
       // Change the caret shape, width and color
       pane.setCaretColor(Styles.EditorColor.COLOR_BACKGROUND.getColor());
       pane.putClientProperty("caretWidth", pane.getCaretWidth());
@@ -505,7 +534,7 @@ class KeyManager {
       // We need to force the caret damage to have the rectangle to correctly show up,
       // otherwise half of the caret is shown.
       try {
-        SwitchableCaret caret = (SwitchableCaret) pane.getCaret();
+        ShapeShiftingCaret caret = (ShapeShiftingCaret) pane.getCaret();
         Rectangle r = Java8Compat.modelToView(pane, caret.getDot());
         caret.damage(r);
       } catch (BadLocationException e) {
@@ -513,7 +542,6 @@ class KeyManager {
       }
     } else {
       // reset to default insert caret
-      println "resetting caret to default"
       pane.setCaretColor(Styles.EditorColor.COLOR_FOREGROUND.getColor());
       pane.putClientProperty("caretWidth", 1);
     }
@@ -627,45 +655,6 @@ class KeyManager {
     redispatchEventToPane(stroke.getKeyTyped());
   }
 
-  private class SwitchableCaret extends DefaultCaret {
-    public void paint(Graphics g) {
-      if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
-        int caretWidth = getCaretWidth();
-        pane.putClientProperty("caretWidth", caretWidth);
-        g.setXORMode(Styles.EditorColor.COLOR_FOREGROUND.getColor());
-        g.translate(caretWidth / 2, 0);
-        super.paint(g);
-      } else {
-        super.paint(g);
-      }
-    }
-
-    public synchronized void damage(Rectangle r) {
-      if ([normalMode, operatorPendingMode, visualMode].contains(currentMode)) {
-        if (r != null) {
-          int damageWidth = getCaretWidth();
-          x = r.x - 4 - (damageWidth / 2);
-          y = r.y;
-          width = 9 + 3 * damageWidth / 2;
-          height = r.height;
-          repaint();
-        }
-      } else {
-        super.damage(r);
-      }
-    }
-
-    private int getCaretWidth() {
-      FontMetrics fm = pane.getFontMetrics(pane.getFont());
-      int carWidth = 1;
-      try {
-        carWidth = fm.stringWidth(pane.getText(pane.getCaretPosition(), 1));
-      } catch (BadLocationException e) {
-        /* empty */
-      }
-      return carWidth;
-    }
-  }
 }
 
 class ActionManager {
@@ -892,6 +881,55 @@ class Register {
   } 
 }
 
+class ShapeShiftingCaret extends DefaultCaret {
+  KeyManager keyManager;
+
+  ShapeShiftingCaret(KeyManager keyManager) {
+    this.keyManager = keyManager;
+  }
+  
+  void paint(Graphics g) {
+    if (['NormalMode', 'OperatorPendingMode',
+         'VisualMode'].contains(keyManager.currentMode.class.name)) {
+      println "painting non-insert mode cursor."
+      int caretWidth = getCaretWidth();
+      keyManager.pane.putClientProperty("caretWidth", caretWidth);
+      g.setXORMode(Styles.EditorColor.COLOR_FOREGROUND.getColor());
+      g.translate(caretWidth / 2, 0);
+      super.paint(g);
+    } else {
+      println "painting insert mode cursor."
+      super.paint(g);
+    }
+  }
+
+  synchronized void damage(Rectangle r) {
+    if (['NormalMode', 'OperatorPendingMode',
+         'VisualMode'].contains(keyManager.currentMode.class.name)) {
+      if (r != null) {
+        int damageWidth = getCaretWidth();
+        x = r.x - 4 - (damageWidth / 2);
+        y = r.y;
+        width = 9 + 3 * damageWidth / 2;
+        height = r.height;
+        repaint();
+      }
+    } else {
+      super.damage(r);
+    }
+  }
+
+  int getCaretWidth() {
+    FontMetrics fm = keyManager.pane.getFontMetrics(keyManager.pane.getFont());
+    int carWidth = 1;
+    try {
+      carWidth = fm.stringWidth(keyManager.pane.getText(keyManager.pane.getCaretPosition(), 1));
+    } catch (BadLocationException e) {
+      /* empty */
+    }
+    return carWidth;
+  }
+}
 
 if (binding.hasVariable('testing')) {
   editor = new EditorController();
