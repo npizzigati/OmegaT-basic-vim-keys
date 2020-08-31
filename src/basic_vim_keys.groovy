@@ -729,6 +729,11 @@ class ActionManager {
     editor.setCaretPosition(caret);
   }
 
+  int getLength() {
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+  }
+
   void registerInsertBefore(int count) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String pullContent = register.getContent();
@@ -744,8 +749,7 @@ class ActionManager {
 
   void deleteChars(int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
-    String text = editor.getCurrentTranslation();
-    int length = text.length();
+    int length = getLength();
 
     int deleteStart = currentPos;
     int deleteEnd = currentPos + number
@@ -788,11 +792,8 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    println "currentPos $currentPos"
-    println "length $length"
     int endIndex = (currentPos == length) ? length - 1 : length
     int newPos = (candidates[number - 1]) ?: endIndex;
-    println "newPos $newPos"
 
     executeGoForwardToOperation(currentPos, newPos, text)
 
@@ -800,6 +801,11 @@ class ActionManager {
 
   void executeGoForwardToOperation(int currentPos, int newPos,
                                    String text) {
+    // Do nothing if at end of segment
+    if (currentPos == text.length()) {
+      return
+    }
+
     if (keyManager.getOperator() == Operator.DELETE) {
       register.push(text[currentPos..(newPos - 1)]);
       deleteToPos(currentPos, newPos);
@@ -864,8 +870,7 @@ class ActionManager {
   }
 
   void moveToLineEnd() {
-    int endCaretPosition = editor.getCurrentTranslation().length();
-    placeCaret(endCaretPosition);
+    placeCaret(getLength());
   }
 }
 
