@@ -941,24 +941,27 @@ class CaretUtilities {
     modeID == ModeID.NORMAL && caret.isBlockCaret
   }
 
+  static void setUpShapeShiftingCaret(pane) {
+    // Get pre-script caret position
+    int pos = pane.getCaretPosition();
+    ShapeShiftingCaret c = new ShapeShiftingCaret(pane);
+    pane.setCaret(c);
+
+    // Reset pre-script caret position
+    // Note that this EditorTextArea3#setCaretPosition (the
+    // standard JTextComponent method) is not the same method as
+    // EditorController#setCaretPosition
+    pane.setCaretPosition(pos);
+    switchCaretShape(pane, ModeID.NORMAL);
+  }
 }
 
 if (binding.hasVariable('testing')) {
   editor = new EditorController();
   testWindow.setup(editor.editor);
 } else {
-  pane = editor.editor
-  // Get pre-script caret position
-  int pos = pane.getCaretPosition();
-  ShapeShiftingCaret c = new ShapeShiftingCaret(pane);
-  pane.setCaret(c);
-
-  // Reset pre-script caret position
-  // Note that this EditorTextArea3#setCaretPosition (the
-  // standard JTextComponent method) is not the same method as
-  // EditorController#setCaretPosition
-  pane.setCaretPosition(pos);
-  CaretUtilities.switchCaretShape(pane, ModeID.NORMAL);
+  pane = editor.editor;
+  CaretUtilities.setUpShapeShiftingCaret(pane);
 }
 
 new Listener(editor, editor.editor);
