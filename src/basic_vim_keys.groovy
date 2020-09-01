@@ -944,6 +944,7 @@ class CaretUtilities {
   static void setUpShapeShiftingCaret(pane) {
     // Get pre-script caret position
     int pos = pane.getCaretPosition();
+
     ShapeShiftingCaret c = new ShapeShiftingCaret(pane);
     pane.setCaret(c);
 
@@ -952,6 +953,7 @@ class CaretUtilities {
     // standard JTextComponent method) is not the same method as
     // EditorController#setCaretPosition
     pane.setCaretPosition(pos);
+
     switchCaretShape(pane, ModeID.NORMAL);
   }
 }
