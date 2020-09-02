@@ -5,20 +5,21 @@
 
 // TODO:
 
+// Is there a way to automatically change keyboard locale to US
+// English at the start of the tests? (for Robot to work correctly.)
+
+// Disable overwrite mode (insert key) when in script. 
+
 // d$ in normal mode just moves to line end instead of deleting
 // to line end
 
 // Caret not visible initially when I load script. It's only
 // visible on the first cursor move I make.
 
-// For tests, need to fake: org.omegat.util.Java8Compat
-// org.omegat.util.gui.Styles; which is difficult in the case of
-// Styles, because it imports a web of other OmegaT classes
+// Script can apparently run multiple times at the same time, if
+// you start it multiple times, causing strange behavior. Need to
+// prevent.
 
-// Script can apparently run multiple times at the same time,
-// causing strange behavior. Need to prevent.
-
-// Delete word on last index gives out of range error
 // have yank be reflected in the clipboard (but have this be an option)
 
 // Implement undo
