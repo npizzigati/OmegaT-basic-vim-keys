@@ -6,13 +6,12 @@ import java.awt.Robot;
 import java.awt.Color;
 
 class VimKeysTest extends GroovyTestCase {
-  Binding binding
-  GroovyShell shell
+  Binding binding;
+  GroovyShell shell;
+  JFrame frame;
+
 
   class TestWindow {
-    def frame;
-    def caret;
-
     void setup(pane) {
       frame = new JFrame();
       frame.setSize(300, 400);
@@ -35,22 +34,40 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   class TestRobot {
+
     static void enterKeys(String robotKeys) {
+      boolean hasShift
       Robot robot = new Robot();
       robot.setAutoWaitForIdle(true);
       // Create KeyEvent instance to be used in reflection to produce VK constant
       KeyEvent dummyKeyEvent = createDummyKeyEvent();
+      int vkShiftCode = KeyEvent.getDeclaredField("VK_SHIFT").get(dummyKeyEvent);
 
       String[] robotKeysArray = robotKeys.split();
       println "robotKeysArray = $robotKeysArray"
       robotKeysArray.each {
+        if (it ==~ /[!@#$%\^&*()_+<>?~|{}]/) {
+          hasShift = true;
+        } else {
+          hasShift = false;
+        }
         String upcaseKey = it.toUpperCase();
+        upcaseKey = (upcaseKey == '$') ? 'DOLLAR' : upcaseKey;
         int vkKey = KeyEvent.getDeclaredField("VK_$upcaseKey").get(dummyKeyEvent);
-        robot.delay(30);
+        executeKeypress(robot, vkKey, hasShift, vkShiftCode);
+      }
+    }
+
+    static void executeKeypress(robot, vkKey, hasShift, vkShiftCode) {
+      robot.delay(20);
+      if (hasShift) {
+        robot.keyPress(vkShiftCode);
         robot.keyPress(vkKey);
-        robot.delay(10);
         robot.keyRelease(vkKey);
-        robot.delay(20);
+        robot.keyRelease(vkShiftCode);
+      } else {
+        robot.keyPress(vkKey);
+        robot.keyRelease(vkKey);
       }
     }
 
@@ -71,20 +88,24 @@ class VimKeysTest extends GroovyTestCase {
   // space and named as they are in the VK constants in the java KeyEvent
   // class
 
-  void testDoesNotInsertTextInNormalMode() {
-    Thread.sleep(50);
+  void setUp() {
     setupShell();
-    String robotKeys = 'i a ESCAPE b'
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+  }
+
+  void tearDown() {
+    frame.setVisible(false);
+    frame.dispose();
+  }
+
+  void testDoesNotInsertTextInNormalMode() {
+    String robotKeys = 'i a ESCAPE b'
     TestRobot.enterKeys(robotKeys);
     assertEquals('a', binding.editor.editor.getText());
   }
 
   void testhMovesOneSpaceBackInNormalMode() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i a ESCAPE h'
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 0
     int actual = binding.editor.editor.getCaretPosition();
@@ -92,10 +113,7 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testhhMovesTwoSpacesBackInNormalMode() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i a a ESCAPE h h i b'
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 1
     int actual = binding.editor.editor.getCaretPosition();
@@ -103,12 +121,9 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testllMovesTwoSpacesForwardInNormalMode() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
     robotKeys += ' 0' 
     robotKeys += ' l l'
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 2
     int actual = binding.editor.editor.getCaretPosition();
@@ -116,11 +131,8 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void test0MovesToBegginingOfSegment() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
     robotKeys += ' 0' 
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 0
     int actual = binding.editor.editor.getCaretPosition();
@@ -128,11 +140,8 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testMoveCaretOneWord() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
     robotKeys += ' 0 w' 
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 5
     int actual = binding.editor.editor.getCaretPosition();
@@ -140,11 +149,8 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testMoveCaretMultipleWords() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
     robotKeys += ' 0 3 w' 
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 10
     int actual = binding.editor.editor.getCaretPosition();
@@ -153,11 +159,8 @@ class VimKeysTest extends GroovyTestCase {
 
   void testMoveCaretMultipleWordstoFinalPosition() {
     // Caret should move to end if number beyond last candidate
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s space i s space a space t e s t escape';
     robotKeys += ' 0 4 w' 
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 14
     int actual = binding.editor.editor.getCaretPosition();
@@ -165,10 +168,7 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testGoToChar() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s ESCAPE 0 f s';
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 3
     int actual = binding.editor.editor.getCaretPosition();
@@ -176,21 +176,23 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testGoToSecondChar() {
-    Thread.sleep(50);
-    setupShell();
     String robotKeys = 'i t h i s SPACE i s ESCAPE 0 2 f i';
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     int expected = 5
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
+  void testGoToEnd() {
+    String robotKeys = 'i t h i s SPACE i s ESCAPE h h h h h $';
+    TestRobot.enterKeys(robotKeys);
+    int expected = 7;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
   void testDeleteChar() {
-    Thread.sleep(100);
-    setupShell();
     String robotKeys = 'i t h i s ESCAPE 0 x';
-    shell.evaluate(new File('../src/basic_vim_keys.groovy'));
     TestRobot.enterKeys(robotKeys);
     String expected = 'his'
     String actual = binding.editor.getCurrentTranslation();
