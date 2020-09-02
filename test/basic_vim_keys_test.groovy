@@ -59,7 +59,7 @@ class VimKeysTest extends GroovyTestCase {
     }
 
     static void executeKeypress(robot, vkKey, hasShift, vkShiftCode) {
-      robot.delay(20);
+      robot.delay(50);
       if (hasShift) {
         robot.keyPress(vkShiftCode);
         robot.keyPress(vkKey);
