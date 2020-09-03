@@ -38,13 +38,13 @@ class VimKeysTest extends GroovyTestCase {
     static void enterKeys(String robotKeys) {
       boolean hasShift
       Robot robot = new Robot();
+      robot.setAutoDelay(20);
       robot.setAutoWaitForIdle(true);
       // Create KeyEvent instance to be used in reflection to produce VK constant
       KeyEvent dummyKeyEvent = createDummyKeyEvent();
       int vkShiftCode = KeyEvent.getDeclaredField("VK_SHIFT").get(dummyKeyEvent);
 
       String[] robotKeysArray = robotKeys.split();
-      println "robotKeysArray = $robotKeysArray"
       robotKeysArray.each {
         if (it ==~ /[!@#$%\^&*()_+<>?~|{}]/) {
           hasShift = true;
@@ -59,7 +59,6 @@ class VimKeysTest extends GroovyTestCase {
     }
 
     static void executeKeypress(robot, vkKey, hasShift, vkShiftCode) {
-      robot.delay(50);
       if (hasShift) {
         robot.keyPress(vkShiftCode);
         robot.keyPress(vkKey);
@@ -91,6 +90,7 @@ class VimKeysTest extends GroovyTestCase {
   void setUp() {
     setupShell();
     shell.evaluate(new File('../src/basic_vim_keys.groovy'));
+    Thread.sleep(300);
   }
 
   void tearDown() {
