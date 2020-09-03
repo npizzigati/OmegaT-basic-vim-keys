@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Change exit hotkey from q to something that makes sense.
+
 // Is there a way to automatically change keyboard locale to US
 // English at the start of the tests? (for Robot to work correctly.)
 
