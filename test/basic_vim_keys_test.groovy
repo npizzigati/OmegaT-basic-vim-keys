@@ -198,4 +198,13 @@ class VimKeysTest extends GroovyTestCase {
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
+
+  void testDeletetoEndwithLowercaseDAndDollarSign() {
+    String robotKeys = 'i t h i s SPACE i s ESCAPE 0 l l d $';
+    TestRobot.enterKeys(robotKeys);
+    String expected = 'th'
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
 }

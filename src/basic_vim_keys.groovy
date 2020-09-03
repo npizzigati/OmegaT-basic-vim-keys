@@ -360,7 +360,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
-    } else if ((char)keyChar =~ /[\dwlhPpftx$0]/) {
+    } else if ((char)keyChar =~ /[\dwlhPpftx$]/) {
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -388,7 +388,7 @@ class OperatorPendingMode extends Mode {
 
     if (isToOrTill()) {
       keyManager.registerActionKey((char)keyChar);
-    } else if (/[0-9wlhPpftx]/ =~ (char)keyChar) {
+    } else if (/[\dwlhPpftx$]/ =~ (char)keyChar) {
       keyManager.registerActionKey((char)keyChar);
     }
     previousChar = keyChar;
@@ -655,6 +655,8 @@ class ActionManager {
 
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
+      println 'Action match';
+      println actionKeys;
       int count = calculateCount(actionKeys);
       trigger(actions[match], count, nonCountKeys);
       actionKeys = ''
@@ -802,7 +804,6 @@ class ActionManager {
     String candidateRegex = "[$key]"
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
-
     int newPos = (candidates[number - 1]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
@@ -839,7 +840,12 @@ class ActionManager {
   }
 
   void moveToLineEnd() {
-    placeCaret(getLength());
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int newPos = text.length();
+
+    executeGoForwardToOperation(currentPos, newPos, text)
+    // placeCaret(getLength());
   }
 }
 
