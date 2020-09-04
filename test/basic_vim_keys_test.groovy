@@ -99,110 +99,170 @@ class VimKeysTest extends GroovyTestCase {
   }
 
   void testDoesNotInsertTextInNormalMode() {
-    String robotKeys = 'i a ESCAPE b'
-    TestRobot.enterKeys(robotKeys);
-    assertEquals('a', binding.editor.editor.getText());
-  }
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
 
-  void testhMovesOneSpaceBackInNormalMode() {
-    String robotKeys = 'i a ESCAPE h'
+    String robotKeys = 'b'
     TestRobot.enterKeys(robotKeys);
-    int expected = 0
-    int actual = binding.editor.editor.getCaretPosition();
+
+    String expected = 'This is a test'
+    String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
 
-  void testhhMovesTwoSpacesBackInNormalMode() {
-    String robotKeys = 'i a a ESCAPE h h i b'
+  void testhMovesOneSpaceBackInNormalMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(2);
+
+    String robotKeys = 'h'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 1
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
-  void testllMovesTwoSpacesForwardInNormalMode() {
-    String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0' 
-    robotKeys += ' l l'
+  void testhhMovesTwoSpacesBackInNormalMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(2);
+
+    String robotKeys = 'h h'
     TestRobot.enterKeys(robotKeys);
+
+    int expected = 0
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  void testllMovesTwoSpacesForwardInNormalMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = 'l l'
+    TestRobot.enterKeys(robotKeys);
+
     int expected = 2
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
-  void test0MovesToBegginingOfSegment() {
-    String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0' 
+  void test0MovesToBeginningOfSegment() {
+    String text = 'This is a test';
+    int endPosition = text.length() - 1
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(endPosition);
+
+    String robotKeys = '0' 
     TestRobot.enterKeys(robotKeys);
+
     int expected = 0
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testMoveCaretOneWord() {
-    String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0 w' 
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = 'w'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 5
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testMoveCaretMultipleWords() {
-    String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0 3 w' 
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = '3 w'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 10
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testMoveCaretMultipleWordstoFinalPosition() {
-    // Caret should move to end if number beyond last candidate
-    String robotKeys = 'i t h i s space i s space a space t e s t escape';
-    robotKeys += ' 0 4 w' 
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = '4 w'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 14
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testGoToChar() {
-    String robotKeys = 'i t h i s ESCAPE 0 f s';
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = 'f s'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 3
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testGoToSecondChar() {
-    String robotKeys = 'i t h i s SPACE i s ESCAPE 0 2 f i';
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = '2 f i'
     TestRobot.enterKeys(robotKeys);
+
     int expected = 5
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testGoToEnd() {
-    String robotKeys = 'i t h i s SPACE i s ESCAPE h h h h h $';
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = '$'
     TestRobot.enterKeys(robotKeys);
-    int expected = 7;
+
+    int expected = 14;
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
 
   void testDeleteChar() {
-    String robotKeys = 'i t h i s ESCAPE 0 x';
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(0);
+
+    String robotKeys = 'x'
     TestRobot.enterKeys(robotKeys);
-    String expected = 'his'
+
+    String expected = 'his is a test'
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
 
   void testDeletetoEndwithLowercaseDAndDollarSign() {
-    String robotKeys = 'i t h i s SPACE i s ESCAPE 0 l l d $';
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(2);
+
+    String robotKeys = 'd $'
     TestRobot.enterKeys(robotKeys);
-    String expected = 'th'
+
+    String expected = 'Th'
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
