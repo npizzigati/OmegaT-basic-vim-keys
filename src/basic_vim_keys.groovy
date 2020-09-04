@@ -5,7 +5,13 @@
 
 // TODO:
 
-// Change exit hotkey from q to something that makes sense.
+// Return cursor to normal DefaultCursor when exiting script
+
+// Cnange my actionKey terminology to something else, to avoid
+// confusion with keyEvent.isActionKey
+
+// Change exit hotkey from q to something that
+// makes sense.
 
 // Is there a way to automatically change keyboard locale to US
 // English at the start of the tests? (for Robot to work
@@ -15,9 +21,6 @@
 
 // d$ in normal mode just moves to line end instead of deleting
 // to line end
-
-// Caret not visible initially when I load script. It's only
-// visible on the first cursor move I make.
 
 // Script can apparently run multiple times at the same time, if
 // you start it multiple times, causing strange behavior. Need to
@@ -518,7 +521,13 @@ class KeyManager {
   void route(Stroke stroke) throws InterruptException {
     int key = stroke.keyTyped.getKeyChar();
 
-    if ((char)key == 'Q' && ctrlPressed(stroke)) {
+    // Exit on ctrl-Q
+    // Need to check if stroke.KeyPressed is not null first
+    // because events dispatched from a remap are only KeyTyped
+    // events
+    if (stroke.keyPressed &&
+        (char)stroke.keyPressed.getKeyCode() == 'Q' &&
+        ctrlPressed(stroke)) {
       throw new InterruptException();
     }
 
@@ -546,9 +555,7 @@ class KeyManager {
 
   boolean ctrlPressed(Stroke stroke) {
     if (!!(stroke.keyPressed)) {
-      return ((stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0);
-    } else {
-      return false
+      return !!(stroke.keyPressed.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK);
     }
   }
 
