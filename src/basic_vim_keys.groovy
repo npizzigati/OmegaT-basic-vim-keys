@@ -46,7 +46,6 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import javax.swing.JFrame;
-import javax.swing.JEditorPane;
 import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.BadLocationException;
