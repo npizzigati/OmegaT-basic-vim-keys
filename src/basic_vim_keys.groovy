@@ -515,18 +515,17 @@ class KeyManager {
     }
   }
 
-
   void route(Stroke stroke) throws InterruptException {
     int key = stroke.keyTyped.getKeyChar();
 
-    if ((char)key == 'q') {
+    if ((char)key == 'Q' && ctrlPressed(stroke)) {
       throw new InterruptException();
     }
 
     // Immediately redispatch all keys with ctrl modifier
     // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
-    if ((isDelete(key)) || ctrlPressed(stroke)) {
+    if (isDelete(key) || ctrlPressed(stroke)) {
       redispatchStrokeToPane(stroke);
     } else {
       currentMode.process(stroke);
