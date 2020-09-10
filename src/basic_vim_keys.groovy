@@ -5,14 +5,14 @@
 
 // TODO:
 
-// f followed by enter freezes normal mode
+// Strange behavior if I press enter with to or till activated
 
 // Pressing two operator pending mode entry keys (d, y, c) in a
 // row causes script to freeze or otherwise weird stuff to happen
 
 // Return cursor to normal DefaultCursor when exiting script
 
-// Cnange my actionKey terminology to something else, to avoid
+// Cnange my actionableKey terminology to something else, to avoid
 // confusion with keyEvent.isActionKey
 
 // Change exit hotkey from q to something that
@@ -374,8 +374,10 @@ class NormalMode extends Mode {
     keyChar = (int)stroke.keyTyped.getKeyChar();
     println "previousChar: $previousChar";
     println "currentChar: $keyChar";
+    // Send any key except for enter to action key processing if
+    // to or till is activated
     if (isToOrTill()) {
-      keyManager.registerActionKey((char)keyChar);
+      keyManager.RelayActionableKey(keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
     } else if (keyChar == (int)'d') {
@@ -388,7 +390,7 @@ class NormalMode extends Mode {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
     } else if ((char)keyChar =~ /[\dwlhPpftx$]/) {
-      keyManager.registerActionKey((char)keyChar);
+      keyManager.RelayActionableKey(keyChar);
     }
     previousChar = keyChar;
   }
@@ -413,10 +415,12 @@ class OperatorPendingMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
+    // Send alphanumeric keys and space to action key processing
+    // if to or till is activated
     if (isToOrTill()) {
-      keyManager.registerActionKey((char)keyChar);
+      keyManager.RelayActionableKey(keyChar);
     } else if (/[\dwlhPpftx$]/ =~ (char)keyChar) {
-      keyManager.registerActionKey((char)keyChar);
+      keyManager.RelayActionableKey(keyChar);
     }
     previousChar = keyChar;
   }
@@ -565,8 +569,8 @@ class KeyManager {
     }
   }
 
-  void registerActionKey(char actionKey) {
-    actionManager.processActionKey(actionKey);
+  void RelayActionableKey(int key) {
+    actionManager.processActionableKey(key);
   }
 
   void setOperator(Operator operator) {
@@ -657,7 +661,7 @@ class KeyManager {
 }
 
 class ActionManager {
-  String actionKeys;
+  String actionableKeys;
   KeyManager keyManager;
   EditorController editor;
   Register register;
@@ -668,9 +672,15 @@ class ActionManager {
     this.register = new Register();
   }
 
-  void processActionKey(char actionKey) {
-    actionKeys = (actionKeys != null) ? actionKeys += actionKey : actionKey;
-    String nonCountKeys = removeCountKeys(actionKeys);
+  void processActionableKey(int keyChar) {
+    if (isNonActionableKey(keyChar)) {
+      actionableKeys = ''
+      return
+    }
+
+    String actionableKey = (char)keyChar;
+    actionableKeys = (actionableKeys != null) ? actionableKeys += actionableKey : actionableKey;
+    String nonCountKeys = removeCountKeys(actionableKeys);
 
     Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
                    (/^l$/):    { cnt -> moveCaret(cnt) },
@@ -686,23 +696,26 @@ class ActionManager {
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
       println 'Action match';
-      println actionKeys;
-      int count = calculateCount(actionKeys);
+      println actionableKeys;
+      int count = calculateCount(actionableKeys);
       trigger(actions[match], count, nonCountKeys);
-      actionKeys = ''
-    } else {
-      print "no match: "
-      println actionKeys;
-    }
+      actionableKeys = ''
+    } 
   }
 
-  String removeCountKeys(String actionKeys) {
-    return actionKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
+  boolean isNonActionableKey(keyChar) {
+    // If key isn't actionable key (e.g., it's a newline,
+    // backspace or escape), return true
+    ([8, 10, 27].contains(keyChar))
   }
 
-  int calculateCount(actionKeys) {
+  String removeCountKeys(String actionableKeys) {
+    return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
+  }
+
+  int calculateCount(actionableKeys) {
     int count = 1
-    def matcher = actionKeys =~ /(?<![fFtT])[0-9]+/
+    def matcher = actionableKeys =~ /(?<![fFtT])[0-9]+/
     int numberOfMatches = matcher.size()
     if (numberOfMatches == 1 && matcher[0] != '0')  {
       count = matcher[0].toInteger();
