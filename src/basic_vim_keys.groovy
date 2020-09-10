@@ -5,8 +5,6 @@
 
 // TODO:
 
-// Strange behavior if I press enter with to or till activated
-
 // Pressing two operator pending mode entry keys (d, y, c) in a
 // row causes script to freeze or otherwise weird stuff to happen
 
