@@ -5,6 +5,11 @@
 
 // TODO:
 
+// f followed by enter freezes normal mode
+
+// Pressing two operator pending mode entry keys (d, y, c) in a
+// row causes script to freeze or otherwise weird stuff to happen
+
 // Return cursor to normal DefaultCursor when exiting script
 
 // Cnange my actionKey terminology to something else, to avoid
@@ -126,7 +131,10 @@ class Listener implements KeyListener {
   // below (isIgnoredTab) in case that implementation is changed
   // in the future
   void keyPressed(KeyEvent event) {
+    println "keyPressed event: " 
+    println event.getKeyCode();
     if(isRedispatchedEvent(event) || event.isActionKey() || isIgnoredTab(event)) {
+      println "pass directly to pane";
       return; //This will allow event to pass on to pane
     }
 
@@ -147,18 +155,28 @@ class Listener implements KeyListener {
   }
 
   void keyTyped(KeyEvent event) {
+    print "keyTyped event: ";
+    int tmpChar = event.getKeyChar();
+    println tmpChar;
     if(isRedispatchedEvent(event) || isIgnoredTab(event)) {
       return;
     }
 
     lastKeyTyped = event;
 
-    // If remap dispatch underway, there will be no keyPressed event
-    if(lastKeyPressed || keyManager.isRemapDispatchUnderway) {
+    // If remap dispatch underway, there will be no keyPressed
+    // event. It also appears as though OmegaT is capturing the
+    // keyPressed event for the enter key, but not the keyTyped
+    // event (i.e., as far as this script is concerned, the enter
+    // key only produces a keyTyped event; in any case, even if a
+    // keyPressed event is generated for the enter key, this
+    // should still work)
+    if(lastKeyPressed || keyManager.isRemapDispatchUnderway || isEnterKey(event)) {
       stroke = new Stroke(lastKeyPressed, lastKeyTyped);
       storeLastConsumed();
       resetKeyEvents();
       try {
+        println "Trying to route stroke";
         keyManager.route(stroke);
       } catch (InterruptException e) {
         stopListening();
@@ -166,6 +184,10 @@ class Listener implements KeyListener {
       }
     }
     event.consume();
+  }
+
+  boolean isEnterKey(event) {
+    ((int)(event.getKeyChar()) == 10);
   }
 
   void keyReleased(KeyEvent releasedEvent) {
@@ -350,6 +372,8 @@ class NormalMode extends Mode {
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
+    println "previousChar: $previousChar";
+    println "currentChar: $keyChar";
     if (isToOrTill()) {
       keyManager.registerActionKey((char)keyChar);
     } else if (keyChar == (int)'i') {
@@ -666,6 +690,9 @@ class ActionManager {
       int count = calculateCount(actionKeys);
       trigger(actions[match], count, nonCountKeys);
       actionKeys = ''
+    } else {
+      print "no match: "
+      println actionKeys;
     }
   }
 
