@@ -674,7 +674,8 @@ class ActionManager {
 
   void processActionableKey(int keyChar) {
     if (isNonActionableKey(keyChar)) {
-      actionableKeys = ''
+      actionableKeys = '';
+      resetToNormalMode();
       return
     }
 
@@ -733,11 +734,15 @@ class ActionManager {
     String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
                                                   : null
     (targetKey) ? action.call(count, targetKey) : action.call(count);
+    resetToNormalMode()
+  }
+
+  void resetToNormalMode() {
     if (keyManager.getCurrentModeID() == ModeID.OPERATOR_PENDING) {
       keyManager.switchTo(ModeID.NORMAL)
     }
   }
-
+  
   void testSelection() {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     int positionChange = 2;
