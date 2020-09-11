@@ -378,7 +378,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING);
       keyManager.setOperator(Operator.YANK);
-    } else if ((char)keyChar =~ /[\dwlhPpftx$]/) {
+    } else if ((char)keyChar =~ /[\dwlhPpftxD$]/) {
       keyManager.RelayActionableKey(keyChar);
     }
     previousChar = keyChar;
@@ -408,7 +408,7 @@ class OperatorPendingMode extends Mode {
     // if to or till is activated
     if (isToOrTill()) {
       keyManager.RelayActionableKey(keyChar);
-    } else if (/[\dwlhPpftx$]/ =~ (char)keyChar) {
+    } else if (/[\ddwlhPpftx$]/ =~ (char)keyChar) {
       keyManager.RelayActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
@@ -684,6 +684,7 @@ class ActionManager {
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
+                   (/^[dD]$/): { deleteLine() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
     String match = actionMatch(actions, nonCountKeys);
@@ -771,6 +772,11 @@ class ActionManager {
     }
 
     editor.replacePartOfText('', deleteStart, deleteEnd);
+  }
+
+  void deleteLine() {
+    int length = getLength();
+    editor.replacePartOfText('', 0, length);
   }
 
   void deleteToPos(int currentPos, int newPos) {
