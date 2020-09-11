@@ -5,16 +5,10 @@
 
 // TODO:
 
-// Pressing two operator pending mode entry keys (d, y, c) in a
-// row causes script to freeze or otherwise weird stuff to happen
-
 // Return cursor to normal DefaultCursor when exiting script
 
 // Cnange my actionableKey terminology to something else, to avoid
 // confusion with keyEvent.isActionKey
-
-// Change exit hotkey from q to something that
-// makes sense.
 
 // Is there a way to automatically change keyboard locale to US
 // English at the start of the tests? (for Robot to work
