@@ -671,6 +671,7 @@ class ActionManager {
     String actionableKey = (char)keyChar;
     actionableKeys = (actionableKeys != null) ? actionableKeys += actionableKey : actionableKey;
     String nonCountKeys = removeCountKeys(actionableKeys);
+    println "actionable keys: $actionableKeys"
 
     Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
                    (/^l$/):    { cnt -> moveCaret(cnt) },
