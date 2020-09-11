@@ -833,10 +833,10 @@ class ActionManager {
     }
   }
 
-  boolean stopPositionIsSpace(String text, int stopPos, int length) {
-    int index = (stopPos == length) ? stopPos - 1 : stopPos;
-    (text[index] ==~ /\s/);
-  }
+  // boolean stopPositionIsSpace(String text, int stopPos, int length) {
+  //   int index = (stopPos == length) ? stopPos - 1 : stopPos;
+  //   (text[index] ==~ /\s/);
+  // }
 
   void goForwardToChar(int number, String key) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
