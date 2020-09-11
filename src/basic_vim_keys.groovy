@@ -410,6 +410,8 @@ class OperatorPendingMode extends Mode {
       keyManager.RelayActionableKey(keyChar);
     } else if (/[\dwlhPpftx$]/ =~ (char)keyChar) {
       keyManager.RelayActionableKey(keyChar);
+    } else {
+      keyManager.switchTo(ModeID.NORMAL);
     }
     previousChar = keyChar;
   }
