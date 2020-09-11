@@ -129,10 +129,7 @@ class Listener implements KeyListener {
   // below (isIgnoredTab) in case that implementation is changed
   // in the future
   void keyPressed(KeyEvent event) {
-    println "keyPressed event: " 
-    println event.getKeyCode();
     if(isRedispatchedEvent(event) || event.isActionKey() || isIgnoredTab(event)) {
-      println "pass directly to pane";
       return; //This will allow event to pass on to pane
     }
 
@@ -153,9 +150,6 @@ class Listener implements KeyListener {
   }
 
   void keyTyped(KeyEvent event) {
-    print "keyTyped event: ";
-    int tmpChar = event.getKeyChar();
-    println tmpChar;
     if(isRedispatchedEvent(event) || isIgnoredTab(event)) {
       return;
     }
@@ -174,7 +168,6 @@ class Listener implements KeyListener {
       storeLastConsumed();
       resetKeyEvents();
       try {
-        println "Trying to route stroke";
         keyManager.route(stroke);
       } catch (InterruptException e) {
         stopListening();
@@ -370,8 +363,6 @@ class NormalMode extends Mode {
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
-    println "previousChar: $previousChar";
-    println "currentChar: $keyChar";
     // Send any key except for enter to action key processing if
     // to or till is activated
     if (isToOrTill()) {
@@ -694,8 +685,6 @@ class ActionManager {
 
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
-      println 'Action match';
-      println actionableKeys;
       int count = calculateCount(actionableKeys);
       trigger(actions[match], count, nonCountKeys);
       actionableKeys = ''
@@ -917,19 +906,16 @@ class ShapeShiftingCaret extends DefaultCaret {
   ShapeShiftingCaret(EditorTextArea3 pane) {
     this.pane = pane;
     isBlockCaret = false;
-    println "initializing caret"
   }
   
   void paint(Graphics g) {
     if (isBlockCaret) {
-      println "painting non-insert mode cursor."
       int caretWidth = getCaretWidth();
       pane.putClientProperty("caretWidth", caretWidth);
       g.setXORMode(Styles.EditorColor.COLOR_FOREGROUND.getColor());
       g.translate(caretWidth / 2, 0);
       super.paint(g);
     } else {
-      println "painting insert mode cursor."
       super.paint(g);
     }
   }
