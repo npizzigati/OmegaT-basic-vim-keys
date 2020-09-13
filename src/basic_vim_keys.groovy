@@ -365,15 +365,12 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'d') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.DELETE);
-      // keyManager.setOperator(Operator.DELETE);
     } else if (keyChar == (int)'c') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.CHANGE);
-      // keyManager.setOperator(Operator.CHANGE);
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-      // keyManager.setOperator(Operator.YANK);
     } else if ((char)keyChar =~ /[\dwlhPpftxD$]/) {
       keyManager.RelayActionableKey(keyChar);
     }
@@ -841,11 +838,6 @@ class ActionManager {
       placeCaret(newPos);
     }
   }
-
-  // boolean stopPositionIsSpace(String text, int stopPos, int length) {
-  //   int index = (stopPos == length) ? stopPos - 1 : stopPos;
-  //   (text[index] ==~ /\s/);
-  // }
 
   void goForwardToChar(int number, String key) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
