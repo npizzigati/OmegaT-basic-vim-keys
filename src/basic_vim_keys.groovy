@@ -134,6 +134,8 @@ class Listener implements KeyListener {
         keyManager.route(stroke);
       } catch (InterruptException e) {
         stopListening();
+        // Set caret back to normal
+        CaretUtilities.resetCaret(pane);
         println e.message;
       }
     }
@@ -957,9 +959,7 @@ class ShapeShiftingCaret extends DefaultCaret {
 class CaretUtilities {
   static void switchCaretShape(pane, modeID) {
     // ShapeShiftingCaret caret = (ShapeShiftingCaret) pane.getCaret();
-    // if ([ModeID.NORMAL, ModeID.OPERATOR_PENDING, ModeID.VISUAL]
-    //     .contains(modeID)) {
-    ShapeShiftingCaret caret = (ShapeShiftingCaret) pane.getCaret();
+    ShapeShiftingCaret caret = pane.getCaret();
     // Don't switch caret if modeID is NORMAL and caret is
     // already block (like when you come out of operator pending mode)
     if (!isTransitionFromOperatorPendingMode(modeID, caret)) {
@@ -1004,6 +1004,18 @@ class CaretUtilities {
     pane.setCaretPosition(pos);
 
     switchCaretShape(pane, ModeID.NORMAL);
+  }
+
+  static void resetCaret(pane) {
+    // DefaultCaret c = new DefaultCaret(pane);
+    // pane.setCaret(c)
+    // pane.setCaretColor(Styles.EditorColor.COLOR_FOREGROUND.getColor());
+    // pane.putClientProperty("caretWidth", 1);
+    // pane.repaint();
+    // pane.revalidate();
+    switchCaretShape(pane, ModeID.INSERT);
+    pane.repaint();
+    pane.revalidate();
   }
 }
 
