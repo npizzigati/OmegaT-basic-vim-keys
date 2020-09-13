@@ -363,14 +363,17 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
     } else if (keyChar == (int)'d') {
-      keyManager.switchTo(ModeID.OPERATOR_PENDING);
-      keyManager.setOperator(Operator.DELETE);
+      keyManager.switchTo(ModeID.OPERATOR_PENDING,
+                          Operator.DELETE);
+      // keyManager.setOperator(Operator.DELETE);
     } else if (keyChar == (int)'c') {
-      keyManager.switchTo(ModeID.OPERATOR_PENDING);
-      keyManager.setOperator(Operator.CHANGE);
+      keyManager.switchTo(ModeID.OPERATOR_PENDING,
+                          Operator.CHANGE);
+      // keyManager.setOperator(Operator.CHANGE);
     } else if (keyChar == (int)'y') {
-      keyManager.switchTo(ModeID.OPERATOR_PENDING);
-      keyManager.setOperator(Operator.YANK);
+      keyManager.switchTo(ModeID.OPERATOR_PENDING,
+                          Operator.YANK);
+      // keyManager.setOperator(Operator.YANK);
     } else if ((char)keyChar =~ /[\dwlhPpftxD$]/) {
       keyManager.RelayActionableKey(keyChar);
     }
@@ -477,18 +480,27 @@ class KeyManager {
     currentMode = normalMode;
 
   }
+  void switchTo(ModeID modeID, Operator operator) {
+    if (modeID != ModeID.OPERATOR_PENDING) {
+      return;
+    }
+
+    println('Switching to operator pending mode')
+    currentMode = operatorPendingMode;
+    this.operator = operator;
+  }
 
   void switchTo(ModeID modeID) {
     // If swiching from operator pending mode, reset operator
     // to none
-    if (operator != Operator.NONE) {
+    if (currentMode == operatorPendingMode) {
         operator = Operator.NONE;
     }
 
     switch(modeID) {
       case ModeID.NORMAL:
-        currentMode = normalMode;
         println('Switching to normal mode')
+        currentMode = normalMode;
         executeCaretSwitch(modeID);
         break;
       case ModeID.INSERT:
@@ -499,10 +511,6 @@ class KeyManager {
       case ModeID.VISUAL:
         currentMode = visualMode;
         println('Switching to visual mode')
-        break;
-      case ModeID.OPERATOR_PENDING:
-        currentMode = operatorPendingMode;
-        println('Switching to operator pending mode')
         break;
     }
   }
@@ -719,10 +727,11 @@ class ActionManager {
     String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
                                                   : null
     (targetKey) ? action.call(count, targetKey) : action.call(count);
-    resetToNormalMode()
+    resetToNormalMode();
   }
 
   void resetToNormalMode() {
+    println "Resetting to normal mode";
     if (keyManager.getCurrentModeID() == ModeID.OPERATOR_PENDING) {
       keyManager.switchTo(ModeID.NORMAL)
     }
@@ -889,8 +898,10 @@ class ActionManager {
   }
 
   void deleteToLineEnd() {
-    keyManager.setOperator(Operator.DELETE);
+    keyManager.switchTo(ModeID.OPERATOR_PENDING,
+                        Operator.DELETE);
     moveToLineEnd();
+    //Fix this
   }
 }
 
