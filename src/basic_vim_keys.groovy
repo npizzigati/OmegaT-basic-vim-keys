@@ -7,9 +7,6 @@
 
 // Return cursor to normal DefaultCursor when exiting script
 
-// Cnange my actionableKey terminology to something else, to avoid
-// confusion with keyEvent.isActionKey
-
 // Is there a way to automatically change keyboard locale to US
 // English at the start of the tests? (for Robot to work
 // correctly for keys like $.)
