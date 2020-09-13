@@ -675,7 +675,8 @@ class ActionManager {
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
-                   (/^[dD]$/): { deleteLine() },
+                   (/^d$/):    { deleteLine() },
+                   (/^D$/):    { deleteToLineEnd() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
     String match = actionMatch(actions, nonCountKeys);
@@ -882,8 +883,12 @@ class ActionManager {
     String text = editor.getCurrentTranslation();
     int newPos = text.length();
 
-    executeGoForwardToOperation(currentPos, newPos, text)
-    // placeCaret(getLength());
+    executeGoForwardToOperation(currentPos, newPos, text);
+  }
+
+  void deleteToLineEnd() {
+    keyManager.setOperator(Operator.DELETE);
+    moveToLineEnd();
   }
 }
 
