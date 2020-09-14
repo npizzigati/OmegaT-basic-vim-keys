@@ -384,53 +384,56 @@ class NormalMode extends Mode {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
     } else if ((char)keyChar =~ /[\dwlhPpftxD$]/) {
-      keyManager.RelayActionableKey(keyChar);
+      actionManager.processActionableKey(keyChar);
     }
-    previousChar = keyChar;
+    previousKey = (char)keyChar;
   }
 
-  boolean isToOrTill() {
-    [(int)'f', (int)'F', (int)'t', (int)'T'].contains(previousChar);
-  }
 }
 
 class OperatorPendingMode extends Mode {
   static final int REMAP_TIMEOUT = 900; // In milliseconds
   Operator operator;
   int keyChar;
-  int previousChar;
+  String previousKey;
+  boolean toOrTillPending;
 
-  OperatorPendingMode(KeyManager keyManager) {
-    super(keyManager);
+  OperatorPendingMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
+    toOrTillPending = false;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
-    // Send alphanumeric keys and space to action key processing
-    // if to or till is activated
-    if (isToOrTill()) {
-      keyManager.RelayActionableKey(keyChar);
+    if (toOrTillPending == false &&
+        ['f', 'F', 't', 'T'].contains(previousKey)) {
+      toOrTillPending = true
+    } else {
+      toOrTillPending = false
+    }
+
+    // Send any key to action key processing if to or till is
+    // activated
+    if (toOrTillPending) {
+      actionManager.processActionableKey(keyChar);
+      toOrTillPending = false;
     } else if (/[\ddwlhPpftx$]/ =~ (char)keyChar) {
-      keyManager.RelayActionableKey(keyChar);
+      actionManager.processActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
     }
-    previousChar = keyChar;
-  }
-
-  boolean isToOrTill() {
-    [(int)'f', (int)'F', (int)'t', (int)'T'].contains(previousChar);
+    previousKey = (char)keyChar;
   }
 }
 
 class InsertMode extends Mode {
   static final int REMAP_TIMEOUT = 20; // In milliseconds
 
-  InsertMode(KeyManager keyManager) {
-    super(keyManager);
+  InsertMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
     userEnteredRemaps = ['ei': '<Esc>', 'ie': '<Esc>'];
     remaps = tokenizeUserEnteredRemaps();
   }
