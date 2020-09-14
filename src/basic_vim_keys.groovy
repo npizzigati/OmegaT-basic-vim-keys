@@ -911,7 +911,6 @@ class ActionManager {
     keyManager.switchTo(ModeID.OPERATOR_PENDING,
                         Operator.DELETE);
     moveToLineEnd();
-    //Fix this
   }
 }
 
