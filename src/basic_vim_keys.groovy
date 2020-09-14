@@ -43,6 +43,10 @@ import java.awt.event.KeyEvent;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.FontMetrics;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -390,7 +394,6 @@ class NormalMode extends Mode {
     }
     previousKey = (char)keyChar;
   }
-
 }
 
 class OperatorPendingMode extends Mode {
@@ -912,9 +915,16 @@ class ActionManager {
 
 class Register {
   String content;
+  Clipboard clipboard;
+
+  Register() {
+    clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+  }
 
   void push(String yankContent) {
-    content = yankContent
+    content = yankContent;
+    StringSelection data = new StringSelection(content);
+    clipboard.setContents(data, data);
   }
 
   String getContent() {

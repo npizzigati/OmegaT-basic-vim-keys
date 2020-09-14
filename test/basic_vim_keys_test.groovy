@@ -1,9 +1,13 @@
 import java.awt.event.KeyEvent;
+import java.awt.Robot;
+import java.awt.Color;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.text.DefaultCaret;
-import java.awt.Robot;
-import java.awt.Color;
 
 class VimKeysTest extends GroovyTestCase {
   Binding binding;
