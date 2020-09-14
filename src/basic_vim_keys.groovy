@@ -209,6 +209,7 @@ class Stroke {
 
 abstract class Mode {
   KeyManager keyManager;
+  ActionManager actionManager;
   // userEnteredRemaps is temporary -- these will be retrieved
   // from user or configuration file
   Map userEnteredRemaps;
@@ -222,8 +223,9 @@ abstract class Mode {
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
 
 
-  Mode(KeyManager keyManager) {
+  Mode(KeyManager keyManager, ActionManager actionManager) {
     this.keyManager = keyManager;
+    this.actionManager = actionManager;
     resetAccumulatedStrokes();
     resetRemapCandidates();
     remapDispatchQueue = [];
@@ -433,8 +435,8 @@ class InsertMode extends Mode {
 }
 
 class VisualMode extends Mode {
-  VisualMode(KeyManager keyManager) {
-    super(keyManager);
+  VisualMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
   }
@@ -469,14 +471,14 @@ class KeyManager {
   KeyManager(EditorController editor, EditorTextArea3 editorPane) {
     this.editor = editor;
     pane = editorPane;
-    normalMode = new NormalMode(this);
-    insertMode = new InsertMode(this);
-    visualMode = new VisualMode(this);
-    operatorPendingMode = new OperatorPendingMode(this);
     actionManager = new ActionManager(this, editor);
+    normalMode = new NormalMode(this, actionManager);
+    insertMode = new InsertMode(this, actionManager);
+    visualMode = new VisualMode(this, actionManager);
+    operatorPendingMode = new OperatorPendingMode(this, actionManager);
     currentMode = normalMode;
-
   }
+
   void switchTo(ModeID modeID, Operator operator) {
     if (modeID != ModeID.OPERATOR_PENDING) {
       return;
@@ -556,10 +558,6 @@ class KeyManager {
     } else {
       currentMode.process(stroke);
     }
-  }
-
-  void RelayActionableKey(int key) {
-    actionManager.processActionableKey(key);
   }
 
   void setOperator(Operator operator) {
@@ -662,7 +660,7 @@ class ActionManager {
   }
 
   void processActionableKey(int keyChar) {
-    if (isNonActionableKey(keyChar)) {
+    if (isNewLineBackspaceOrEscape(keyChar)) {
       actionableKeys = '';
       resetToNormalMode();
       return
@@ -694,7 +692,7 @@ class ActionManager {
     } 
   }
 
-  boolean isNonActionableKey(keyChar) {
+  boolean isNewLineBackspaceOrEscape(keyChar) {
     // If key isn't actionable key (e.g., it's a newline,
     // backspace or escape), return true
     ([8, 10, 27].contains(keyChar))
