@@ -348,20 +348,30 @@ abstract class Mode {
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
   int keyChar;
-  int previousChar;
+  String previousKey;
+  boolean toOrTillPending;
 
-  NormalMode(KeyManager keyManager) {
-    super(keyManager);
+  NormalMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
+    toOrTillPending = false;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
-    // Send any key except for enter to action key processing if
-    // to or till is activated
-    if (isToOrTill()) {
-      keyManager.RelayActionableKey(keyChar);
+
+    if (toOrTillPending == false &&
+        ['f', 'F', 't', 'T'].contains(previousKey)) {
+      toOrTillPending = true
+    } else {
+      toOrTillPending = false
+    }
+
+    // Send any key to action key processing if to or till is
+    // activated
+    if (toOrTillPending) {
+      actionManager.processActionableKey(keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
     } else if (keyChar == (int)'d') {
