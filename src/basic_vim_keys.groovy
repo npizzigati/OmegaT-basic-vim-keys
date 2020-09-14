@@ -225,7 +225,6 @@ abstract class Mode {
   Thread remapTimeoutThread;
   static final VK_KEYS = ['<esc>': KeyEvent.VK_ESCAPE, '<bs>': KeyEvent.VK_BACK_SPACE];
 
-
   Mode(KeyManager keyManager, ActionManager actionManager) {
     this.keyManager = keyManager;
     this.actionManager = actionManager;
