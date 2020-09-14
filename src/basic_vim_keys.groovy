@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Make clipboard integration optional (see Register class)
+
 // Movement keys in operator pending mode should apply operator
 // to character (e.g. dl should delete the next character)
 
