@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Implement e in normal mode to go to end of word
+
 // Make clipboard integration optional (see Register class)
 
 // Movement keys in operator pending mode should apply operator
