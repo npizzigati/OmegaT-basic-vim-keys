@@ -5,7 +5,11 @@
 
 // TODO:
 
+// Implement a in normal mode
+
 // Implement e in normal mode to go to end of word
+
+// Implement r (replace) ... is this another mode entirely?
 
 // Make clipboard integration optional (see Register class)
 
