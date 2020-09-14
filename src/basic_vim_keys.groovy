@@ -27,7 +27,7 @@
 
 // have yank be reflected in the clipboard (but have this be an option)
 
-// Implement undo
+// Implement undo (and repeat) last change
 
 // GoForwardTo and GoForwardTill are the same method. GoForwardTo
 // with Operator.DELETE should delete up to and including the
