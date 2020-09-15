@@ -5,9 +5,13 @@
 
 // TODO:
 
-// Implement a in normal mode
+// Regex for w in normal mode should not stop at each punctuation
+// character in a series of punctuation characters. It should
+// only stop at the first (this may respectively apply to e
+// movement too). Try also to get e to stop at the last
+// character, and not go to the cursor position beyond.
 
-// Implement e in normal mode to go to end of word
+// Implement a in normal mode
 
 // Implement r (replace) ... is this another mode entirely?
 
@@ -19,7 +23,7 @@
 // Return cursor to normal DefaultCursor when exiting script
 
 // Is there a way to automatically change keyboard locale to US
-// English at the start of the tests? (for Robot to work
+// // English at the start of the tests? (for Robot to work //
 // correctly for keys like $.)
 
 // Disable overwrite mode (insert key) when in script. 
@@ -31,7 +35,8 @@
 // you start it multiple times, causing strange behavior. Need to
 // prevent.
 
-// have yank be reflected in the clipboard (but have this be an option)
+// have yank be reflected in the clipboard (but have this be an
+// option)
 
 // Implement undo (and repeat) last change
 
@@ -44,7 +49,8 @@
 // Convert java regex to groovy regex in normal mode w method
 
 // Too much casting in mode functions. Should I have a hash with
-// the different char values, e.g. Letters['a'] instead of (int)'a' 
+// the different char values, e.g. Letters['a'] instead of
+// (int)'a'?
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
@@ -388,6 +394,9 @@ class NormalMode extends Mode {
       actionManager.processActionableKey(keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
+    } else if (keyChar == (int)'a') {
+      actionManager.processActionableKey(keyChar);
+      keyManager.switchTo(ModeID.INSERT);
     } else if (keyChar == (int)'d') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.DELETE);
@@ -397,7 +406,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-    } else if ((char)keyChar =~ /[\dwlhPpftxD$]/) {
+    } else if ((char)keyChar =~ /[\dewlhPpftxD$]/) {
       actionManager.processActionableKey(keyChar);
     }
     previousKey = (char)keyChar;
@@ -697,7 +706,9 @@ class ActionManager {
     String nonCountKeys = removeCountKeys(actionableKeys);
     println "actionable keys: $actionableKeys"
 
-    Map actions = [(/^w$/):    { cnt -> moveByWord(cnt) },
+    Map actions = [(/^w$/):    { cnt -> toBeginningOfWordAhead(cnt) },
+                   (/^e$/):    { cnt -> toEndOfWordAhead(cnt) },
+                   (/^a$/):    { moveCaret(1) },
                    (/^l$/):    { cnt -> moveCaret(cnt) },
                    (/^h$/):    { cnt -> moveCaret(-cnt) },
                    (/^P$/):    { cnt -> registerInsertBefore(cnt) },
@@ -823,7 +834,26 @@ class ActionManager {
     editor.setCaretPosition(caretPosition);
   }
 
-  void moveByWord(int number) {
+  void toEndOfWordAhead(int number) {
+    // This is almost exactly like toBeginning... Can I extract
+    // to a method?
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+
+    String candidateRegex = '(?<=[\\p{L}\\d])[\\p{L}\\d](?=[^\\p{L}\\d])|([^\\p{L}\\d\\s])|(.$)'
+    Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = getMatches(text, candidateRegex);
+
+    List candidates = matches.findAll { it > currentPos };
+    int endIndex = (currentPos == length) ? length - 1 : length
+    int newPos = (candidates[number - 1]) ?: endIndex;
+
+    executeGoForwardToOperation(currentPos, newPos, text)
+  }
+  
+  void toBeginningOfWordAhead(int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
