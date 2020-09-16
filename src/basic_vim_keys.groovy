@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Sneak hack doesn't escape special regex keys (like .)
+
 // Regex for w in normal mode should not stop at each punctuation
 // character in a series of punctuation characters. It should
 // only stop at the first (this may respectively apply to e
@@ -370,27 +372,50 @@ class NormalMode extends Mode {
   int keyChar;
   String previousKey;
   boolean toOrTillPending;
+  boolean sneakPending;
+  List toOrTillPendingKeys;
+  List sneakKeys;
+  int sneakCount;
 
   NormalMode(KeyManager keyManager, ActionManager actionManager) {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
+    toOrTillPendingKeys = ['f', 'F', 't', 'T'];
+    sneakKeys = ['s'];
     toOrTillPending = false;
+    sneakPending = false;
+    sneakCount = 0;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
     if (toOrTillPending == false &&
-        ['f', 'F', 't', 'T'].contains(previousKey)) {
+        sneakPending == false &&
+        toOrTillPendingKeys.contains(previousKey)) {
       toOrTillPending = true
     } else {
       toOrTillPending = false
     }
 
+    if (sneakPending == false &&
+        toOrTillPending == false &&
+        sneakKeys.contains(previousKey)) {
+      sneakPending = true;
+    } else {
+      if (sneakPending == true) {
+        sneakCount += 1
+      }
+      if (sneakCount == 2) {
+        sneakPending = false;
+        sneakCount = 0;
+      }
+    }
+
     // Send any key to action key processing if to or till is
     // activated
-    if (toOrTillPending) {
+    if (toOrTillPending || sneakPending) {
       actionManager.processActionableKey(keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
@@ -406,7 +431,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-    } else if ((char)keyChar =~ /[\dewlhPpftxD$]/) {
+    } else if ((char)keyChar =~ /[\dewlhPpftsxD$]/) {
       actionManager.processActionableKey(keyChar);
     }
     previousKey = (char)keyChar;
@@ -419,30 +444,52 @@ class OperatorPendingMode extends Mode {
   int keyChar;
   String previousKey;
   boolean toOrTillPending;
+  boolean sneakPending;
+  List toOrTillPendingKeys;
+  List sneakKeys;
+  int sneakCount;
 
   OperatorPendingMode(KeyManager keyManager, ActionManager actionManager) {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
+    toOrTillPendingKeys = ['f', 'F', 't', 'T'];
+    sneakKeys = ['s'];
     toOrTillPending = false;
+    sneakPending = false;
+    sneakCount = 0;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
     if (toOrTillPending == false &&
-        ['f', 'F', 't', 'T'].contains(previousKey)) {
-      toOrTillPending = true
+        sneakPending == false &&
+        toOrTillPendingKeys.contains(previousKey)) {
+      toOrTillPending = true;
     } else {
-      toOrTillPending = false
+      toOrTillPending = false;
+    }
+
+    if (sneakPending == false &&
+        toOrTillPending == false &&
+        sneakKeys.contains(previousKey)) {
+      sneakPending = true;
+    } else {
+      if (sneakPending == true) {
+        sneakCount += 1
+      }
+      if (sneakCount == 2) {
+        sneakPending = false;
+        sneakCount = 0;
+      }
     }
 
     // Send any key to action key processing if to or till is
     // activated
-    if (toOrTillPending) {
+    if (toOrTillPending || sneakPending) {
       actionManager.processActionableKey(keyChar);
-      toOrTillPending = false;
-    } else if (/[\ddwlhPpftx$]/ =~ (char)keyChar) {
+    } else if (/[\ddwlhPpftsx$]/ =~ (char)keyChar) {
       actionManager.processActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
@@ -717,6 +764,7 @@ class ActionManager {
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
+                   (/^s..$/):  { keys -> sneakForwardToChars(keys) },
                    (/^d$/):    { deleteLine() },
                    (/^D$/):    { deleteToLineEnd() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
@@ -736,6 +784,10 @@ class ActionManager {
   }
 
   String removeCountKeys(String actionableKeys) {
+    // sneak
+    if (actionableKeys[0] == 's') {
+      return actionableKeys
+    }
     return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
   }
 
@@ -756,9 +808,15 @@ class ActionManager {
   }
 
   void trigger(Closure action, int count, String nonCountKeys) {
-    String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
+    // Sneak
+    if (nonCountKeys.length() == 3) {
+      String targetKeys = nonCountKeys[1..-1];
+      action.call(targetKeys);
+    } else {
+      String targetKey = (nonCountKeys =~ /[tfTF]/) ? nonCountKeys[-1]
                                                   : null
-    (targetKey) ? action.call(count, targetKey) : action.call(count);
+      (targetKey) ? action.call(count, targetKey) : action.call(count);
+    }
     resetToNormalMode();
   }
 
@@ -901,6 +959,18 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
     int newPos = (candidates[number - 1]) ?: currentPos;
+
+    executeGoForwardToOperation(currentPos, newPos, text)
+  }
+
+  void sneakForwardToChars(String keys) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = keys;
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it > currentPos };
+    int newPos = (candidates[0]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
   }
