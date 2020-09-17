@@ -7,6 +7,8 @@
 
 // Sneak doesn't escape special regex keys
 
+// Implement C (change to end of line)
+
 // Regex for w in normal mode should not stop at each punctuation
 // character in a series of punctuation characters. It should
 // only stop at the first (this may respectively apply to e
