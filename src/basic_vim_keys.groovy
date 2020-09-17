@@ -5,7 +5,7 @@
 
 // TODO:
 
-// Sneak hack doesn't escape special regex keys (like .)
+// Sneak doesn't escape special regex keys
 
 // Regex for w in normal mode should not stop at each punctuation
 // character in a series of punctuation characters. It should
@@ -381,8 +381,8 @@ class NormalMode extends Mode {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    toOrTillPendingKeys = ['f', 'F', 't', 'T'];
-    sneakKeys = ['s'];
+    toOrTillPendingKeys = ['f', 't'];
+    sneakKeys = ['s', 'S'];
     toOrTillPending = false;
     sneakPending = false;
     sneakCount = 0;
@@ -431,7 +431,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-    } else if ((char)keyChar =~ /[\dewlhPpftsxD$]/) {
+    } else if ((char)keyChar =~ /[\dewlhPpftsSxD$]/) {
       actionManager.processActionableKey(keyChar);
     }
     previousKey = (char)keyChar;
@@ -453,8 +453,8 @@ class OperatorPendingMode extends Mode {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    toOrTillPendingKeys = ['f', 'F', 't', 'T'];
-    sneakKeys = ['s'];
+    toOrTillPendingKeys = ['f', 't'];
+    sneakKeys = ['s', 'S'];
     toOrTillPending = false;
     sneakPending = false;
     sneakCount = 0;
@@ -489,7 +489,7 @@ class OperatorPendingMode extends Mode {
     // activated
     if (toOrTillPending || sneakPending) {
       actionManager.processActionableKey(keyChar);
-    } else if (/[\ddwlhPpftsx$]/ =~ (char)keyChar) {
+    } else if (/[\ddwlhPpftsSx$]/ =~ (char)keyChar) {
       actionManager.processActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
@@ -765,6 +765,7 @@ class ActionManager {
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^s..$/):  { keys -> sneakForwardToChars(keys) },
+                   (/^S..$/):  { keys -> sneakBackToChars(keys) },
                    (/^d$/):    { deleteLine() },
                    (/^D$/):    { deleteToLineEnd() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
@@ -785,7 +786,7 @@ class ActionManager {
 
   String removeCountKeys(String actionableKeys) {
     // sneak
-    if (actionableKeys[0] == 's') {
+    if (actionableKeys[0] =~ /[sS]/) {
       return actionableKeys
     }
     return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
@@ -951,6 +952,28 @@ class ActionManager {
     }
   }
 
+  void executeGoBackToOperation(int currentPos, int newPos,
+                                   String text) {
+    // Do nothing if at beginning of segment
+    if (currentPos == 0) {
+      return
+    }
+
+    if (keyManager.getOperator() == Operator.DELETE) {
+      register.push(text[newPos..(currentPos - 1)]);
+      deleteToPos(newPos, currentPos);
+    } else if (keyManager.getOperator() == Operator.CHANGE) {
+      register.push(text[newPos..(currentPos - 1)]);
+      changeToPos(newPos, currentPos);
+    } else if (keyManager.getOperator() == Operator.YANK) {
+      register.push(text[newPos..(currentPos - 1)]);
+    } else if (keyManager.getCurrentModeID() == ModeID.VISUAL) {
+      selectToPos(newPos, currentPos);
+    } else {
+      placeCaret(newPos);
+    }
+  }
+
   void goForwardToChar(int number, String key) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
@@ -963,6 +986,18 @@ class ActionManager {
     executeGoForwardToOperation(currentPos, newPos, text)
   }
 
+  void sneakBackToChars(String keys) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = keys;
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it < currentPos };
+    int newPos = (!!candidates) ? candidates[-1] : currentPos;
+
+    executeGoBackToOperation(currentPos, newPos, text)
+  }
+
   void sneakForwardToChars(String keys) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
@@ -970,7 +1005,8 @@ class ActionManager {
     String candidateRegex = keys;
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
-    int newPos = (candidates[0]) ?: currentPos;
+    int newPos = (!!candidates) ? candidates[-1] : currentPos;
+    // int newPos = (candidates[0]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
   }
