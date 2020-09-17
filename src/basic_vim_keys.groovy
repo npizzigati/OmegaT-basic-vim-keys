@@ -1005,7 +1005,7 @@ class ActionManager {
     String candidateRegex = keys;
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it > currentPos };
-    int newPos = (!!candidates) ? candidates[-1] : currentPos;
+    int newPos = (!!candidates) ? candidates[0] : currentPos;
     // int newPos = (candidates[0]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
