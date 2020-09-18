@@ -7,6 +7,9 @@
 
 // Sneak doesn't escape special regex keys
 
+// Using a number followed by sneak s or S should probably just
+// return to normal mode or something like that
+
 // Implement C (change to end of line)
 
 // Regex for w in normal mode should not stop at each punctuation
@@ -14,8 +17,6 @@
 // only stop at the first (this may respectively apply to e
 // movement too). Try also to get e to stop at the last
 // character, and not go to the cursor position beyond.
-
-// Implement a in normal mode
 
 // Implement r (replace) ... is this another mode entirely?
 
