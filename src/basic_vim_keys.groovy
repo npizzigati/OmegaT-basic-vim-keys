@@ -909,7 +909,9 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    int endIndex = (currentPos == length) ? length - 1 : length
+    println "currentPos: $currentPos"
+    println "length: $length"
+    int endIndex = (currentPos == length - 1) ? length - 1 : length
     int newPos = (candidates[number - 1]) ?: endIndex;
 
     executeGoForwardToOperation(currentPos, newPos, text)
