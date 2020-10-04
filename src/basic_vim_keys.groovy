@@ -5,8 +5,6 @@
 
 // TODO:
 
-// Sneak doesn't escape special regex keys
-
 // Using a number followed by sneak s or S should probably just
 // return to normal mode or something like that
 
@@ -991,29 +989,38 @@ class ActionManager {
     executeGoForwardToOperation(currentPos, newPos, text)
   }
 
-  void sneakBackToChars(String keys) {
+  void sneakBackToChars(String keypair) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = keys;
-    List matches = getMatches(text, candidateRegex);
-    List candidates = matches.findAll { it < currentPos };
+    Pattern pattern = ~/[${keypair[0]}][${keypair[1]}]/
+    List matchingIndices = getMatchingIndices(text, pattern);
+    List candidates = matchingIndices.findAll { it < currentPos };
     int newPos = (!!candidates) ? candidates[-1] : currentPos;
 
     executeGoBackToOperation(currentPos, newPos, text)
   }
 
-  void sneakForwardToChars(String keys) {
+  void sneakForwardToChars(String keypair) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = keys;
-    List matches = getMatches(text, candidateRegex);
-    List candidates = matches.findAll { it > currentPos };
+    Pattern pattern = ~/[${keypair[0]}][${keypair[1]}]/
+    List matchingIndices = getMatchingIndices(text, pattern);
+    List candidates = matchingIndices.findAll { it > currentPos };
     int newPos = (!!candidates) ? candidates[0] : currentPos;
-    // int newPos = (candidates[0]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
+  }
+
+  List getMatchingIndices(String text, Pattern pattern) {
+    Matcher matcher = pattern.matcher(text);
+    List matches = [];
+
+    while (matcher.find()) {
+      matches << matcher.start();
+    }
+    return matches;
   }
 
   List getMatches(String text, String candidateRegex) {
