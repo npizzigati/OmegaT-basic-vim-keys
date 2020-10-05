@@ -4,6 +4,7 @@
  */
 
 // TODO:
+// Reset action keys when changing segments
 
 // Using a number followed by sneak s or S should probably just
 // return to normal mode or something like that
