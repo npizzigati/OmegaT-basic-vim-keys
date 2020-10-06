@@ -4,6 +4,10 @@
  */
 
 // TODO:
+
+// .x. in normal mode leads to action key accumulation
+
+// Escape should reset action keys 
 // Reset action keys when changing segments
 
 // Using a number followed by sneak s or S should probably just
