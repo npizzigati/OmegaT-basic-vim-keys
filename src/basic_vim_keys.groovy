@@ -103,6 +103,10 @@ enum ModeID {
   NORMAL, INSERT, VISUAL, OPERATOR_PENDING;
 }
 
+enum SubModeID {
+  TO_OR_TILL, SNEAK, NONE;
+}
+
 enum Operator {
   DELETE, CHANGE, YANK, NONE;
 }
@@ -263,6 +267,8 @@ abstract class Mode {
     resetRemapCandidates();
     remapDispatchQueue = [];
     strokeDispatchQueue = [];
+    userEnteredRemaps = [:];
+    remaps = tokenizeUserEnteredRemaps();
   }
 
   class RemapTimeoutThread extends Thread {
@@ -375,58 +381,44 @@ abstract class Mode {
     remapTimeoutThread && remapTimeoutThread.isAlive()
   }
 
+  boolean isNewLineBackspaceOrEscape(int keyChar) {
+    // If key isn't actionable key (e.g., it's a newline,
+    // backspace or escape), return true
+    [8, 10, 27].contains(keyChar)
+  }
+
   abstract void execute(Stroke stroke);
 }
 
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
   int keyChar;
-  String previousKey;
-  boolean toOrTillPending;
-  boolean sneakPending;
-  List toOrTillPendingKeys;
-  List sneakKeys;
-  int sneakCount;
+  // String previousKey;
+  // boolean toOrTillPending;
+  // boolean sneakPending;
+  // List toOrTillPendingKeys;
+  // List sneakKeys;
+  // int sneakCount;
 
   NormalMode(KeyManager keyManager, ActionManager actionManager) {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    toOrTillPendingKeys = ['f', 't'];
-    sneakKeys = ['s', 'S'];
-    toOrTillPending = false;
-    sneakPending = false;
-    sneakCount = 0;
+    // toOrTillPendingKeys = ['f', 't'];
+    // sneakKeys = ['s', 'S'];
+    // toOrTillPending = false;
+    // sneakPending = false;
+    // sneakCount = 0;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
-    if (toOrTillPending == false &&
-        sneakPending == false &&
-        toOrTillPendingKeys.contains(previousKey)) {
-      toOrTillPending = true
-    } else {
-      toOrTillPending = false
-    }
-
-    if (sneakPending == false &&
-        toOrTillPending == false &&
-        sneakKeys.contains(previousKey)) {
-      sneakPending = true;
-    } else {
-      if (sneakPending == true) {
-        sneakCount += 1
-      }
-      if (sneakCount == 2) {
-        sneakPending = false;
-        sneakCount = 0;
-      }
-    }
-
-    // Send any key to action key processing if to or till is
-    // activated
-    if (toOrTillPending || sneakPending) {
+    if ([(int)'f', (int)'t'].contains(keyChar)) {
+      keyManager.setSubMode(SubModeID.TO_OR_TILL);
+      actionManager.processActionableKey(keyChar);
+    } else if ([(int)'s', (int)'S'].contains(keyChar)) {
+      keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
     } else if (keyChar == (int)'i') {
       keyManager.switchTo(ModeID.INSERT);
@@ -445,7 +437,6 @@ class NormalMode extends Mode {
     } else if ((char)keyChar =~ /[\dewlhPpftsSxD$]/) {
       actionManager.processActionableKey(keyChar);
     }
-    previousKey = (char)keyChar;
   }
 }
 
@@ -453,59 +444,27 @@ class OperatorPendingMode extends Mode {
   static final int REMAP_TIMEOUT = 900; // In milliseconds
   Operator operator;
   int keyChar;
-  String previousKey;
-  boolean toOrTillPending;
-  boolean sneakPending;
-  List toOrTillPendingKeys;
-  List sneakKeys;
-  int sneakCount;
 
   OperatorPendingMode(KeyManager keyManager, ActionManager actionManager) {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    toOrTillPendingKeys = ['f', 't'];
-    sneakKeys = ['s', 'S'];
-    toOrTillPending = false;
-    sneakPending = false;
-    sneakCount = 0;
   }
 
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
-    if (toOrTillPending == false &&
-        sneakPending == false &&
-        toOrTillPendingKeys.contains(previousKey)) {
-      toOrTillPending = true;
-    } else {
-      toOrTillPending = false;
-    }
-
-    if (sneakPending == false &&
-        toOrTillPending == false &&
-        sneakKeys.contains(previousKey)) {
-      sneakPending = true;
-    } else {
-      if (sneakPending == true) {
-        sneakCount += 1
-      }
-      if (sneakCount == 2) {
-        sneakPending = false;
-        sneakCount = 0;
-      }
-    }
-
-    // Send any key to action key processing if to or till is
-    // activated
-    if (toOrTillPending || sneakPending) {
+    if ([(int)'f', (int)'t'].contains(keyChar)) {
+      keyManager.setSubMode(SubModeID.TO_OR_TILL);
+      actionManager.processActionableKey(keyChar);
+    } else if ([(int)'s', (int)'S'].contains(keyChar)) {
+      keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
     } else if (/[\ddwlhPpftsSx$]/ =~ (char)keyChar) {
       actionManager.processActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
     }
-    previousKey = (char)keyChar;
   }
 }
 
@@ -549,12 +508,67 @@ class VisualMode extends Mode {
   }
 }
 
+class ToOrTillSubMode extends Mode {
+  
+  ToOrTillSubMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
+  }
+
+  void execute(Stroke stroke) {
+    int keyChar = (int)stroke.keyTyped.getKeyChar();
+    if (isNewLineBackspaceOrEscape(keyChar)) {
+      cleanUpAndExit();
+    }
+
+    actionManager.processActionableKey(keyChar);
+    cleanUpAndExit();
+  }
+
+  void cleanUpAndExit() {
+    actionManager.resetActionableKeys();
+    keyManager.exitSubMode();
+  }
+}
+
+class SneakSubMode extends Mode {
+  int charCount
+  
+  SneakSubMode(KeyManager keyManager, ActionManager actionManager) {
+    super(keyManager, actionManager);
+    charCount = 0;
+  }
+
+  void execute(Stroke stroke) {
+    int keyChar = (int)stroke.keyTyped.getKeyChar();
+    charCount += 1;
+
+    if (isNewLineBackspaceOrEscape(keyChar)) {
+      cleanUpAndExit();
+    } else {
+      actionManager.processActionableKey(keyChar);
+    }
+
+    if (charCount == 2) {
+      cleanUpAndExit();
+    }
+  }
+
+  void cleanUpAndExit() {
+    charCount = 0;
+    actionManager.resetActionableKeys();
+    keyManager.exitSubMode();
+  }
+}
+
 class KeyManager {
   Mode normalMode;
   Mode insertMode;
   Mode visualMode;
   Mode operatorPendingMode;
   Mode currentMode;
+  Mode currentSubMode;
+  Mode toOrTillSubMode;
+  Mode sneakSubMode;
   Operator operator;
   ActionManager actionManager;
   boolean isRemapDispatchUnderway;
@@ -568,8 +582,11 @@ class KeyManager {
     normalMode = new NormalMode(this, actionManager);
     insertMode = new InsertMode(this, actionManager);
     visualMode = new VisualMode(this, actionManager);
+    toOrTillSubMode = new ToOrTillSubMode(this, actionManager);
+    sneakSubMode = new SneakSubMode(this, actionManager);
     operatorPendingMode = new OperatorPendingMode(this, actionManager);
     currentMode = normalMode;
+    currentSubMode = null;
   }
 
   void switchTo(ModeID modeID, Operator operator) {
@@ -607,7 +624,24 @@ class KeyManager {
     }
   }
 
-  void executeCaretSwitch(modeID) {
+  void setSubMode(SubModeID subModeID) {
+    switch(subModeID) {
+      case SubModeID.TO_OR_TILL:
+        println('Switching to to or till submode')
+        currentSubMode = toOrTillSubMode;
+        break;
+      case SubModeID.SNEAK:
+        println('Switching to sneak submode')
+        currentSubMode = sneakSubMode;
+        break;
+    }
+  }
+
+  void exitSubMode() {
+    currentSubMode = null;
+  }
+
+  void executeCaretSwitch(ModeID modeID) {
     // Only switch caret when using ShapeShiftingCaret (e.g. not
     // in testing)
     if (pane.getCaret().class.name == 'ShapeShiftingCaret') {
@@ -648,8 +682,10 @@ class KeyManager {
     // May want to change this to be able to use ctrl key in vim
     if (isDelete(key) || ctrlPressed(stroke)) {
       redispatchStrokeToPane(stroke);
-    } else {
+    } else if (currentSubMode == null) {
       currentMode.process(stroke);
+    } else {
+      currentSubMode.process(stroke);
     }
   }
 
@@ -753,12 +789,6 @@ class ActionManager {
   }
 
   void processActionableKey(int keyChar) {
-    if (isNewLineBackspaceOrEscape(keyChar)) {
-      actionableKeys = '';
-      resetToNormalMode();
-      return
-    }
-
     String actionableKey = (char)keyChar;
     actionableKeys = (actionableKeys != null) ? actionableKeys += actionableKey : actionableKey;
     String nonCountKeys = removeCountKeys(actionableKeys);
@@ -787,12 +817,6 @@ class ActionManager {
       trigger(actions[match], count, nonCountKeys);
       actionableKeys = ''
     } 
-  }
-
-  boolean isNewLineBackspaceOrEscape(keyChar) {
-    // If key isn't actionable key (e.g., it's a newline,
-    // backspace or escape), return true
-    ([8, 10, 27].contains(keyChar))
   }
 
   String removeCountKeys(String actionableKeys) {
@@ -837,6 +861,10 @@ class ActionManager {
     if (keyManager.getCurrentModeID() == ModeID.OPERATOR_PENDING) {
       keyManager.switchTo(ModeID.NORMAL)
     }
+  }
+
+  void resetActionableKeys() {
+    actionableKeys = '';
   }
   
   void testSelection() {
