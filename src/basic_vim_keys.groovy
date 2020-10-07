@@ -104,7 +104,7 @@ enum ModeID {
 }
 
 enum SubModeID {
-  TO_OR_TILL, SNEAK, NONE;
+  TO_OR_TILL, SNEAK;
 }
 
 enum Operator {
