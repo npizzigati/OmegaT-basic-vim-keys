@@ -5,7 +5,12 @@
 
 // TODO:
 
+// Write tests for toOrTill and sneak actions
+
 // .x. in normal mode leads to action key accumulation
+
+// The delete key in toOrTill submode shouldn't delete a key it
+// should just return to the main mode
 
 // Escape should reset action keys 
 // Reset action keys when changing segments
