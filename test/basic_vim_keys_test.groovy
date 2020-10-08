@@ -321,5 +321,4 @@ class VimKeysTest {
     int actual = VimKeysTest.binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
-
 }
