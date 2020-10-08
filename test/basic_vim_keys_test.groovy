@@ -103,6 +103,7 @@ class VimKeysTest {
       VimKeysTest.windowSetupIsDone = true;
       Thread.sleep(300);
     }
+    VimKeysTest.binding.editor.editor.setText('');
   }
 
   @AfterClass
