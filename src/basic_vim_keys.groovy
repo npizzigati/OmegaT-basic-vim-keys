@@ -414,7 +414,7 @@ class NormalMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
-    if ([(int)'f', (int)'t'].contains(keyChar)) {
+    if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
@@ -454,7 +454,7 @@ class OperatorPendingMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
-    if ([(int)'f', (int)'t'].contains(keyChar)) {
+    if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
@@ -804,6 +804,7 @@ class ActionManager {
                    (/^0$/):    { moveToLineStart() },
                    (/^\$$/):   { moveToLineEnd() },
                    (/^f.$/):   { cnt, key -> goForwardToChar(cnt, key) },
+                   (/^F.$/):   { cnt, key -> goBackwardToChar(cnt, key) },
                    (/^t.$/):   { cnt, key -> goForwardToChar(cnt, key) },
                    (/^s..$/):  { keys -> sneakForwardToChars(keys) },
                    (/^S..$/):  { keys -> sneakBackToChars(keys) },
@@ -945,8 +946,6 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it > currentPos };
-    println "currentPos: $currentPos"
-    println "length: $length"
     int endIndex = (currentPos == length - 1) ? length - 1 : length
     int newPos = (candidates[number - 1]) ?: endIndex;
 
@@ -1025,6 +1024,18 @@ class ActionManager {
     int newPos = (candidates[number - 1]) ?: currentPos;
 
     executeGoForwardToOperation(currentPos, newPos, text)
+  }
+
+  void goBackwardToChar(int number, String key) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+    String candidateRegex = "[$key]"
+    List matches = getMatches(text, candidateRegex);
+    List candidates = matches.findAll { it < currentPos };
+    int newPos = (candidates[-1 - (number - 1)]) ?: currentPos;
+    println "newPos: $newPos"
+    executeGoBackToOperation(currentPos, newPos, text)
   }
 
   void sneakBackToChars(String keypair) {

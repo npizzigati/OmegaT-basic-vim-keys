@@ -103,13 +103,24 @@ class VimKeysTest {
       VimKeysTest.windowSetupIsDone = true;
       Thread.sleep(300);
     }
-    VimKeysTest.binding.editor.editor.setText('');
+    binding.editor.editor.setText('');
+    binding.editor.editor.setCaretPosition(0);
+    resetToNormalMode();
+  }
+
+  @After
+  void afterEachTestTearDown() {
+    Thread.sleep(50);
   }
 
   @AfterClass
-  static void tearDown() {
+  static void cleanUp() {
     frame.setVisible(false);
     frame.dispose();
+  }
+
+  void resetToNormalMode() {
+    TestRobot.enterKeys('ESCAPE');
   }
 
   @Test
@@ -225,7 +236,7 @@ class VimKeysTest {
   }
 
   @Test
-  void testGoToChar() {
+  void testGoFowardToChar() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(0);
@@ -239,7 +250,7 @@ class VimKeysTest {
   }
 
   @Test
-  void testGoToSecondChar() {
+  void testGoForwardToSecondChar() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(0);
@@ -248,6 +259,34 @@ class VimKeysTest {
     TestRobot.enterKeys(robotKeys);
 
     int expected = 5
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testGoBackwardToChar() {
+    String text = 'It was the best of times. It was the worst of times';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(text.length() - 1);
+
+    String robotKeys = 'F o'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 43
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testGoBackwardToSecondCharacterBack() {
+    String text = 'It was the best of times. It was the worst of times';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(text.length() - 1);
+
+    String robotKeys = '2 F o'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 38
     int actual = binding.editor.editor.getCaretPosition();
     assertEquals(expected, actual);
   }
@@ -311,8 +350,8 @@ class VimKeysTest {
   @Test
   void testSneakBackwardToChar() {
     String text = 'This is a test';
-    VimKeysTest.binding.editor.editor.setText(text);
-    VimKeysTest.binding.editor.editor.setCaretPosition(10);
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(10);
 
     String robotKeys = 'S h i'
     TestRobot.enterKeys(robotKeys);
