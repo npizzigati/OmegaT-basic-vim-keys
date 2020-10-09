@@ -5,7 +5,7 @@
 
 // TODO:
 
-// Write tests for toOrTill and sneak actions
+// Write tests for operator mode delete and yank, as well as paste
 
 // .x. in normal mode leads to action key accumulation
 
