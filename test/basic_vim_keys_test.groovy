@@ -108,10 +108,10 @@ class VimKeysTest {
     resetToNormalMode();
   }
 
-  @After
-  void afterEachTestTearDown() {
-    Thread.sleep(50);
-  }
+  // @After
+  // void afterEachTestTearDown() {
+  //   Thread.sleep(50);
+  // }
 
   @AfterClass
   static void cleanUp() {
@@ -357,7 +357,49 @@ class VimKeysTest {
     TestRobot.enterKeys(robotKeys);
 
     int expected = 1
-    int actual = VimKeysTest.binding.editor.editor.getCaretPosition();
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testDeleteWord() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'd w'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "This a test"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testYankAndPasteBefore() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(10);
+
+    String robotKeys = 'y w P'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "This is a testtest"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testYankAndPasteAfter() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(10);
+
+    String robotKeys = 'y w p'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "This is a ttestest"
+    String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
 }
