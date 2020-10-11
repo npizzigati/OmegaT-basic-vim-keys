@@ -5,8 +5,6 @@
 
 // TODO:
 
-// Write tests for operator mode delete and yank, as well as paste
-
 // .x. in normal mode leads to action key accumulation
 
 // The delete key in toOrTill submode shouldn't delete a key it
