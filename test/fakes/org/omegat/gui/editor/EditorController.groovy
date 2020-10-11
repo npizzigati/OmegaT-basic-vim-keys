@@ -51,6 +51,11 @@ public class EditorController implements IEditor {
     caret.setDot(pos.getPosition());
   }
 
+  public void insertText(String text) {
+    int currentPosition = editor.getCaretPosition();
+    editor.replaceSelection(text);
+  }
+
   public EditorSettings getSettings() {
     new EditorSettings();  
   }
