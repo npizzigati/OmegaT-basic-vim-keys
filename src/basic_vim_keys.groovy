@@ -5,8 +5,6 @@
 
 // TODO:
 
-// .x. in normal mode leads to action key accumulation
-
 // The delete key in toOrTill submode shouldn't delete a key it
 // should just return to the main mode
 
@@ -385,6 +383,10 @@ abstract class Mode {
     [8, 10, 27].contains(keyChar)
   }
 
+  boolean isDelete(int key) {
+    key == 127;
+  }
+
   abstract void execute(Stroke stroke);
 }
 
@@ -415,6 +417,8 @@ class NormalMode extends Mode {
     if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
+    } else if (isDelete(keyChar)) {
+      keyManager.redispatchStrokeToPane(stroke);
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
@@ -452,6 +456,7 @@ class OperatorPendingMode extends Mode {
   void execute(Stroke stroke) {
     keyChar = (int)stroke.keyTyped.getKeyChar();
 
+    println("keyChar: $keyChar")
     if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
@@ -492,6 +497,7 @@ class VisualMode extends Mode {
   }
 
   void execute(Stroke stroke) {
+    // need to handle delete and backspace, too
     switch (keyChar) {
       case 'i':
         keyManager.switchTo(ModeID.INSERT);
@@ -676,9 +682,8 @@ class KeyManager {
     }
 
     // Immediately redispatch all keys with ctrl modifier
-    // as well as delete (not used in vim)
     // May want to change this to be able to use ctrl key in vim
-    if (isDelete(key) || ctrlPressed(stroke)) {
+    if (ctrlPressed(stroke)) {
       redispatchStrokeToPane(stroke);
     } else if (currentSubMode == null) {
       currentMode.process(stroke);
@@ -701,9 +706,9 @@ class KeyManager {
     }
   }
 
-  boolean isDelete(int key) {
-    key == 127;
-  }
+  // boolean isDelete(int key) {
+  //   key == 127;
+  // }
 
   void batchRedispatchStrokes(List queue) {
     queue.each {
