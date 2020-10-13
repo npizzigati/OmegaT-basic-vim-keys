@@ -402,4 +402,31 @@ class VimKeysTest {
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
+  @Test
+  void deleteKeyBehavesCorrectlyInOperatorPendingMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'c DELETE'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "This is a test"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void deleteKeyBehavesCorrectlyInNormalMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'DELETE'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "This s a test"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
 }
