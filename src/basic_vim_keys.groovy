@@ -387,6 +387,10 @@ abstract class Mode {
     key == 127;
   }
 
+  boolean isBackspace(int key) {
+    key == 8;
+  }
+
   abstract void execute(Stroke stroke);
 }
 
