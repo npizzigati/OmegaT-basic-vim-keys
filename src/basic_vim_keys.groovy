@@ -393,22 +393,11 @@ abstract class Mode {
 class NormalMode extends Mode {
   static final int REMAP_TIMEOUT = 1000;
   int keyChar;
-  // String previousKey;
-  // boolean toOrTillPending;
-  // boolean sneakPending;
-  // List toOrTillPendingKeys;
-  // List sneakKeys;
-  // int sneakCount;
 
   NormalMode(KeyManager keyManager, ActionManager actionManager) {
     super(keyManager, actionManager);
     userEnteredRemaps = [:];
     remaps = tokenizeUserEnteredRemaps();
-    // toOrTillPendingKeys = ['f', 't'];
-    // sneakKeys = ['s', 'S'];
-    // toOrTillPending = false;
-    // sneakPending = false;
-    // sneakCount = 0;
   }
 
   void execute(Stroke stroke) {
