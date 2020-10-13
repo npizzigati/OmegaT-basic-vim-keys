@@ -699,10 +699,6 @@ class KeyManager {
     }
   }
 
-  // boolean isDelete(int key) {
-  //   key == 127;
-  // }
-
   void batchRedispatchStrokes(List queue) {
     queue.each {
       // For some reason, keyPressed events are not dispatched for
