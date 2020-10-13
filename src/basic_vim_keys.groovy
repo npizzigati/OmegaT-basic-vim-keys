@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Fix backspace behavior in op pending mode and normal mode
+
 // The delete key in toOrTill submode shouldn't delete a key it
 // should just return to the main mode
 
