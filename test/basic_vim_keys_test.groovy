@@ -402,6 +402,21 @@ class VimKeysTest {
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
+
+  @Test
+  void BackspaceKeyBehavesCorrectlyInOperatorPendingMode() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'c BACK_SPACE'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "Thisis a test"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
   @Test
   void deleteKeyBehavesCorrectlyInOperatorPendingMode() {
     String text = 'This is a test';
