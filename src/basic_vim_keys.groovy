@@ -5,7 +5,14 @@
 
 // TODO:
 
-// Fix backspace behavior in op pending mode and normal mode
+// Fix negative index error to large for goBackToBeginningOfWord
+// and possibly goBackwardToChar
+
+// Why is test failing for going back to beginning of words for multiple
+// words?
+
+// Add tests for goForwardToChar and goBackwardToChar if I
+// haven't already
 
 // The delete key in toOrTill submode shouldn't delete a key it
 // should just return to the main mode
