@@ -1057,8 +1057,7 @@ class ActionManager {
     String candidateRegex = "[$key]"
     List matches = getMatches(text, candidateRegex);
     List candidates = matches.findAll { it < currentPos };
-    int newPos = (candidates[-1 - (number - 1)]) ?: currentPos;
-    println "newPos: $newPos"
+    int newPos = (candidates[-number]) ?: currentPos;
     executeGoBackToOperation(currentPos, newPos, text)
   }
 
