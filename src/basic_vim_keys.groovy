@@ -421,6 +421,8 @@ class NormalMode extends Mode {
       actionManager.processActionableKey(keyChar);
     } else if (isDelete(keyChar)) {
       keyManager.redispatchStrokeToPane(stroke);
+    } else if (isBackspace(keyChar)) {
+      actionManager.processActionableKey((int)'h')
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
@@ -438,7 +440,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-    } else if ((char)keyChar =~ /[\dewlhPpftsSxD$]/) {
+    } else if ((char)keyChar =~ /[\dbewlhPpftsSxD$]/) {
       actionManager.processActionableKey(keyChar);
     }
   }
@@ -462,6 +464,9 @@ class OperatorPendingMode extends Mode {
     if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
+    } else if (isBackspace(keyChar)) {
+      keyManager.redispatchStrokeToPane(stroke);
+      keyManager.switchTo(ModeID.INSERT);
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
@@ -810,6 +815,7 @@ class ActionManager {
                    (/^s..$/):  { keys -> sneakForwardToChars(keys) },
                    (/^S..$/):  { keys -> sneakBackToChars(keys) },
                    (/^d$/):    { deleteLine() },
+                   (/^b$/):    { cnt -> toBeginningOfWordBehind(cnt) },
                    (/^D$/):    { deleteToLineEnd() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
@@ -953,6 +959,23 @@ class ActionManager {
     executeGoForwardToOperation(currentPos, newPos, text)
   }
   
+  void toBeginningOfWordBehind(int number) {
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    String text = editor.getCurrentTranslation();
+    int length = text.length();
+
+    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
+    Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = getMatches(text, candidateRegex);
+
+    List candidates = matches.findAll { it < currentPos };
+    int newPos = (candidates) ? candidates[-number] : 0;
+    println('newbacktopos: $newPos');
+
+    executeGoBackToOperation(currentPos, newPos, text)
+  }
+
   void toBeginningOfWordAhead(int number) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
