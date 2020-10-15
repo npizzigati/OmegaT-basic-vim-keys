@@ -404,7 +404,21 @@ class VimKeysTest {
   }
 
   @Test
-  void BackspaceKeyBehavesCorrectlyInOperatorPendingMode() {
+  void BackspaceKeyBehavesCorrectlyInOperatorPendingModeChangingModeToInsert() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'c BACK_SPACE a'
+    TestRobot.enterKeys(robotKeys);
+
+    String expected = "Thisais a test"
+    String actual = binding.editor.getCurrentTranslation();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void BackspaceKeyBehavesCorrectlyInOperatorPendingModeDeletingPrecedingCharacter() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
