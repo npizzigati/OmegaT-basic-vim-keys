@@ -486,4 +486,46 @@ class VimKeysTest {
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
+
+  @Test
+  void bKeyInNormalModeGoesBackAWord() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(8);
+
+    String robotKeys = 'b'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 5;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void bKeyInNormalModeGoesBackMultipleWords() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(8);
+
+    String robotKeys = 'b'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 0;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void bKeyInNormalModeGoestoBeginningIfInFirstWord() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(2);
+
+    String robotKeys = 'b'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 0;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
 }
