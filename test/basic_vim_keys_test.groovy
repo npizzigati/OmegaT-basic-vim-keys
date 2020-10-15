@@ -432,6 +432,34 @@ class VimKeysTest {
   }
 
   @Test
+  void BackspaceKeyBehavesCorrectlyInNormalModeWithCount() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = '3 BACK_SPACE'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 2;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void BackspaceKeyBehavesCorrectlyInNormalModeWithNoCount() {
+    String text = 'This is a test';
+    binding.editor.editor.setText(text);
+    binding.editor.editor.setCaretPosition(5);
+
+    String robotKeys = 'BACK_SPACE'
+    TestRobot.enterKeys(robotKeys);
+
+    int expected = 4;
+    int actual = binding.editor.editor.getCaretPosition();
+    assertEquals(expected, actual);
+  }
+
+  @Test
   void deleteKeyBehavesCorrectlyInOperatorPendingMode() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
