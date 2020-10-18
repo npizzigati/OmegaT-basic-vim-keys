@@ -835,6 +835,10 @@ class ActionManager {
       return actionableKeys
     }
     return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
+    // // sneak
+    // if (actionableKeys[0] =~ /[sS]/) {
+    //   return actionableKeys
+    // }
   }
 
   int calculateCount(actionableKeys) {
