@@ -7,7 +7,6 @@
 
 // Operators don't work with to or till when there are counts
 
-// Escape should reset action keys 
 // Reset action keys when changing segments
 
 // Using a number followed by sneak s or S should probably just
@@ -390,6 +389,10 @@ abstract class Mode {
     key == 8;
   }
 
+  boolean isEscape(int key) {
+    key == 27;
+  }
+
   abstract void execute(Stroke stroke);
 }
 
@@ -409,6 +412,8 @@ class NormalMode extends Mode {
     if ([(int)'f', (int)'F', (int)'t', (int)'T'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
+    } else if (isEscape(keyChar)) {
+      actionManager.resetActionableKeys();
     } else if (isDelete(keyChar)) {
       keyManager.redispatchStrokeToPane(stroke);
     } else if (isBackspace(keyChar)) {
