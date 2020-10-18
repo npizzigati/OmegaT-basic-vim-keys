@@ -51,8 +51,6 @@
 // with Operator.DELETE should delete up to and including the
 // specified letter, etc.
 
-// Need to make fake editor.insertText method
-
 // Convert java regex to groovy regex in normal mode w method
 
 // Too much casting in mode functions. Should I have a hash with
