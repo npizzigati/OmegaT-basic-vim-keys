@@ -830,15 +830,11 @@ class ActionManager {
   }
 
   String removeCountKeys(String actionableKeys) {
-    // sneak
-    if (actionableKeys[0] =~ /[sS]/) {
-      return actionableKeys
-    }
-    return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[1-9])0/, '')
     // // sneak
     // if (actionableKeys[0] =~ /[sS]/) {
     //   return actionableKeys
     // }
+    return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[0-9])0/, '')
   }
 
   int calculateCount(actionableKeys) {
