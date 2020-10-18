@@ -5,9 +5,6 @@
 
 // TODO:
 
-// Add tests for goForwardToChar and goBackwardToChar if I
-// haven't already
-
 // The delete key in toOrTill submode shouldn't delete a key it
 // should just return to the main mode
 
