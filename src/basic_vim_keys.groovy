@@ -5,6 +5,8 @@
 
 // TODO:
 
+// A number ending in 2 zeros can't be used for a count
+
 // Fix negative index error to large for goBackToBeginningOfWord
 // and possibly goBackwardToChar
 
