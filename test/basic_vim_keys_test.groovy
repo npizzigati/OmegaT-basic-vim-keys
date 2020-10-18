@@ -404,7 +404,7 @@ class VimKeysTest {
   }
 
   @Test
-  void BackspaceKeyBehavesCorrectlyInOperatorPendingModeChangingModeToInsert() {
+  void backspaceKeyBehavesCorrectlyInOperatorPendingModeChangingModeToInsert() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
@@ -418,7 +418,7 @@ class VimKeysTest {
   }
 
   @Test
-  void BackspaceKeyBehavesCorrectlyInOperatorPendingModeDeletingPrecedingCharacter() {
+  void backspaceKeyBehavesCorrectlyInOperatorPendingModeDeletingPrecedingCharacter() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
@@ -432,7 +432,7 @@ class VimKeysTest {
   }
 
   @Test
-  void BackspaceKeyBehavesCorrectlyInNormalModeWithCount() {
+  void backspaceKeyBehavesCorrectlyInNormalModeWithCount() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
