@@ -972,8 +972,7 @@ class ActionManager {
     List matches = getMatches(text, candidateRegex);
 
     List candidates = matches.findAll { it < currentPos };
-    int newPos = (candidates) ? candidates[-number] : 0;
-    println('newbacktopos: $newPos');
+    int newPos = (candidates.size() >= number) ? (candidates[-number]) : 0;
 
     executeGoBackToOperation(currentPos, newPos, text)
   }
