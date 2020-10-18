@@ -5,9 +5,6 @@
 
 // TODO:
 
-// Why is test failing for going back to beginning of words for multiple
-// words?
-
 // Add tests for goForwardToChar and goBackwardToChar if I
 // haven't already
 

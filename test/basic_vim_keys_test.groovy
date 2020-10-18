@@ -507,7 +507,7 @@ class VimKeysTest {
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(8);
 
-    String robotKeys = 'b'
+    String robotKeys = '2 b'
     TestRobot.enterKeys(robotKeys);
 
     int expected = 0;
