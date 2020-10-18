@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Operators don't work with to or till when there are counts
+
 // Escape should reset action keys 
 // Reset action keys when changing segments
 
