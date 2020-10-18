@@ -446,7 +446,7 @@ class VimKeysTest {
   }
 
   @Test
-  void BackspaceKeyBehavesCorrectlyInNormalModeWithNoCount() {
+  void backspaceKeyBehavesCorrectlyInNormalModeWithNoCount() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
