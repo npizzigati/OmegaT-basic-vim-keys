@@ -5,7 +5,8 @@
 
 // TODO:
 
-// Operators don't work with to or till when there are counts
+// Backspace key in op pending mode doesn't seem to be working
+// correctly
 
 // Reset action keys when changing segments
 
@@ -463,7 +464,8 @@ class OperatorPendingMode extends Mode {
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
-    } else if (/[\ddwlhPpftsSx$]/ =~ (char)keyChar) {
+    } else if ((char)keyChar =~ /[\ddwlhPpftsSx$]/) {
+      println "action key"
       actionManager.processActionableKey(keyChar);
     } else {
       keyManager.switchTo(ModeID.NORMAL);
