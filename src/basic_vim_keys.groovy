@@ -5,6 +5,11 @@
 
 // TODO:
 
+// Cursor sometimes disappears when switching do Normal mode from
+// Insert. Reappears when cursor is moved.
+
+// Does sneak work with numbers?
+
 // Backspace key in op pending mode doesn't seem to be working
 // correctly
 
