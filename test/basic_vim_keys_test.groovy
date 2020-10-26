@@ -108,11 +108,6 @@ class VimKeysTest {
     resetToNormalMode();
   }
 
-  // @After
-  // void afterEachTestTearDown() {
-  //   Thread.sleep(50);
-  // }
-
   @AfterClass
   static void cleanUp() {
     frame.setVisible(false);
@@ -122,6 +117,9 @@ class VimKeysTest {
   void resetToNormalMode() {
     TestRobot.enterKeys('ESCAPE');
   }
+
+  // Tests use JUnit syntax to be able to use @AfterClass for
+  // cleanup
 
   @Test
   void testDoesNotInsertTextInNormalMode() {
