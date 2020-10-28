@@ -5,6 +5,8 @@
 
 // TODO:
 
+// dt[ seems not to be working
+
 // Cursor sometimes disappears when switching do Normal mode from
 // Insert. Reappears when cursor is moved.
 
@@ -204,6 +206,14 @@ class Listener implements KeyListener {
       }
     }
     event.consume();
+
+    // // Hacky fix to cursor disappearing
+    // SwingUtilities.invokeLater(new Runnable() {
+    //   public void run() {
+    //     // pane.revalidate();
+    //   }
+    // });
+
   }
 
   boolean isEnterKey(event) {
