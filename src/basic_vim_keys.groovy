@@ -5,6 +5,8 @@
 
 // TODO:
 
+// Is there a memory leak in the cursor switching code?
+
 // dt[ seems not to be working
 
 // Cursor sometimes disappears when switching do Normal mode from
