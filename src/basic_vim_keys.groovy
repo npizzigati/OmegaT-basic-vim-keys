@@ -7,8 +7,6 @@
 
 // Is there a memory leak in the cursor switching code?
 
-// dt[ seems not to be working
-
 // Cursor sometimes disappears when switching do Normal mode from
 // Insert. Reappears when cursor is moved.
 
@@ -1050,6 +1048,8 @@ class ActionManager {
   }
 
   void goForwardToChar(int number, String key) {
+    // Escape chars that need to be escaped in char class
+    key = key.replaceAll(/([\[\]\^\-])/, $/\\$1/$)
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
@@ -1062,6 +1062,8 @@ class ActionManager {
   }
 
   void goBackwardToChar(int number, String key) {
+    // Escape chars that need to be escaped in char class
+    key = key.replaceAll(/([\[\]\^\-])/, $/\\$1/$)
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
@@ -1073,10 +1075,16 @@ class ActionManager {
   }
 
   void sneakBackToChars(String keypair) {
+    // Escape chars that need to be escaped in char class
+    String firstKey = keypair[0]
+    String secondKey = keypair[1]
+    (firstKey, secondKey) = [firstKey, secondKey].collect {
+      it = it.replaceAll(/([\[\]\^\-])/, $/\\$1/$)
+    }
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    Pattern pattern = ~/[${keypair[0]}][${keypair[1]}]/
+    Pattern pattern = ~/[$firstKey][$secondKey]/
     List matchingIndices = getMatchingIndices(text, pattern);
     List candidates = matchingIndices.findAll { it < currentPos };
     int newPos = (!!candidates) ? candidates[-1] : currentPos;
@@ -1085,10 +1093,16 @@ class ActionManager {
   }
 
   void sneakForwardToChars(String keypair) {
+    // Escape chars that need to be escaped in char class
+    String firstKey = keypair[0]
+    String secondKey = keypair[1]
+    (firstKey, secondKey) = [firstKey, secondKey].collect {
+      it = it.replaceAll(/([\[\]\^\-])/, $/\\$1/$)
+    }
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    Pattern pattern = ~/[${keypair[0]}][${keypair[1]}]/
+    Pattern pattern = ~/[$firstKey][$secondKey]/
     List matchingIndices = getMatchingIndices(text, pattern);
     List candidates = matchingIndices.findAll { it > currentPos };
     int newPos = (!!candidates) ? candidates[0] : currentPos;
