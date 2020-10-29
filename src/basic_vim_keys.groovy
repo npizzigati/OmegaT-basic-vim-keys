@@ -1285,12 +1285,6 @@ class CaretUtilities {
   }
 
   static void resetCaret(pane) {
-    // DefaultCaret c = new DefaultCaret(pane);
-    // pane.setCaret(c)
-    // pane.setCaretColor(Styles.EditorColor.COLOR_FOREGROUND.getColor());
-    // pane.putClientProperty("caretWidth", 1);
-    // pane.repaint();
-    // pane.revalidate();
     switchCaretShape(pane, ModeID.INSERT);
     pane.repaint();
     pane.revalidate();
