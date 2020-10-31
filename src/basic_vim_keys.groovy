@@ -10,8 +10,6 @@
 // Cursor sometimes disappears when switching do Normal mode from
 // Insert. Reappears when cursor is moved.
 
-// Does sneak work with numbers?
-
 // Backspace key in op pending mode doesn't seem to be working
 // correctly
 
@@ -834,15 +832,16 @@ class ActionManager {
       int count = calculateCount(actionableKeys);
       trigger(actions[match], count, nonCountKeys);
       actionableKeys = ''
+      println "count: $count"
     } 
   }
 
   String removeCountKeys(String actionableKeys) {
-    // // sneak
-    // if (actionableKeys[0] =~ /[sS]/) {
-    //   return actionableKeys
-    // }
-    return actionableKeys.replaceAll(/(?<![fFtT])[1-9]|(?<![fFtT])(?<=[0-9])0/, '')
+    // Do not remove numbers if action is sneak or toOrTill
+    if (actionableKeys[0] =~ /[sSfFtT]/) {
+      return actionableKeys
+    }
+    return actionableKeys.replaceAll(/[1-9]|(?<=[0-9])0/, '')
   }
 
   int calculateCount(actionableKeys) {
