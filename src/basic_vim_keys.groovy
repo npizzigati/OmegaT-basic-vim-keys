@@ -5,10 +5,7 @@
 
 // TODO:
 
-// Is there a memory leak in the cursor switching code?
-
-// Cursor sometimes disappears when switching do Normal mode from
-// Insert. Reappears when cursor is moved.
+// Add tests for moveCaret (h and l) if they're not already there
 
 // Backspace key in op pending mode doesn't seem to be working
 // correctly
@@ -62,6 +59,10 @@
 // Too much casting in mode functions. Should I have a hash with
 // the different char values, e.g. Letters['a'] instead of
 // (int)'a'?
+
+// Cursor sometimes disappears when switching do Normal mode from
+// Insert. Reappears when cursor is moved.
+// Is there a memory leak in the cursor switching code?
 
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
