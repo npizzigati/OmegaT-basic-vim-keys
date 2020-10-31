@@ -472,8 +472,7 @@ class OperatorPendingMode extends Mode {
       keyManager.setSubMode(SubModeID.TO_OR_TILL);
       actionManager.processActionableKey(keyChar);
     } else if (isBackspace(keyChar)) {
-      keyManager.redispatchStrokeToPane(stroke);
-      keyManager.switchTo(ModeID.INSERT);
+      actionManager.processActionableKey((int)'h')
     } else if ([(int)'s', (int)'S'].contains(keyChar)) {
       keyManager.setSubMode(SubModeID.SNEAK);
       actionManager.processActionableKey(keyChar);
@@ -1133,15 +1132,13 @@ class ActionManager {
   void moveCaret(int positionChange) {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     int newPos = currentPos + positionChange;
-    int lineLength = editor.getCurrentTranslation().length();
+    String text = editor.getCurrentTranslation();
 
-    if (newPos < 0) {
-      newPos = 0;
-    } else if (newPos > lineLength) {
-      newPos = lineLength;
+    if (positionChange > 0) {
+      executeGoForwardToOperation(currentPos, newPos, text)
+    } else {
+      executeGoBackToOperation(currentPos, newPos, text)    
     }
-
-    placeCaret(newPos);
   }
 
   void moveToLineStart() {
