@@ -403,6 +403,10 @@ abstract class Mode {
     key == 127;
   }
 
+  boolean isNewline(int key) {
+    key == 10;
+  }
+
   boolean isBackspace(int key) {
     key == 8;
   }
@@ -501,9 +505,11 @@ class InsertMode extends Mode {
   }
 
   void execute(Stroke stroke) {
-    if ((int)stroke.keyTyped.getKeyChar() == KeyEvent.VK_ESCAPE) {
+    int keyChar = (int)stroke.keyTyped.getKeyChar();
+
+    if (keyChar == KeyEvent.VK_ESCAPE) {
       keyManager.switchTo(ModeID.NORMAL)
-    } else {
+    } else if (!isNewline(keyChar)) {
       keyManager.redispatchStrokeToPane(stroke);
     }
   }
