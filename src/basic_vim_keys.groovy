@@ -838,9 +838,9 @@ class ActionManager {
     String match = actionMatch(actions, nonCountKeys);
     if (match) {
       int count = calculateCount(actionableKeys);
+      println "count: $count"
       trigger(actions[match], count, nonCountKeys);
       actionableKeys = ''
-      println "count: $count"
     } 
   }
 
