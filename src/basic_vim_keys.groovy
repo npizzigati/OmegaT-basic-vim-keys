@@ -464,7 +464,7 @@ class NormalMode extends Mode {
 
 class OperatorPendingMode extends Mode {
   static final int REMAP_TIMEOUT = 900; // In milliseconds
-  Operator operator;
+  // Operator operator;
   int keyChar;
 
   OperatorPendingMode(KeyManager keyManager, ActionManager actionManager) {
