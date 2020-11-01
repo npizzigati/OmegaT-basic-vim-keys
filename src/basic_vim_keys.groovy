@@ -5,6 +5,11 @@
 
 // TODO:
 
+// Enter in insert mode causes an error
+
+// change move to end of line and beginning of line to use
+// moveForwardTo, in order to implement operators
+
 // Add tests for moveCaret (h and l) if they're not already there
 
 // Backspace key in op pending mode doesn't seem to be working
@@ -16,6 +21,9 @@
 // return to normal mode or something like that
 
 // Implement C (change to end of line)
+
+// Change tests to use junit5 to see if that resolves issue of
+// runner hanging at end?
 
 // Regex for w in normal mode should not stop at each punctuation
 // character in a series of punctuation characters. It should
