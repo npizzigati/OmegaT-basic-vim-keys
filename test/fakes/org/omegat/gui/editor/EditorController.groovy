@@ -31,6 +31,9 @@ public class EditorController implements IEditor {
                                 int endIndex) {
     String currentText = editor.getText();
     editor.setText(currentText.substring(0, startIndex) + replacement + currentText.substring(endIndex));
+
+    DefaultCaret caret = editor.getCaret();
+    caret.setDot(startIndex);
   }
 
   // Need to have another method signature for 2 inputs
