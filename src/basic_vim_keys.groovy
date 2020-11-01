@@ -878,11 +878,10 @@ class ActionManager {
                                                   : null
       (targetKey) ? action.call(count, targetKey) : action.call(count);
     }
-    resetToNormalMode();
+    resetToNormalModeIfInOperatorPendingMode();
   }
 
-  void resetToNormalMode() {
-    println "Resetting to normal mode";
+  void resetToNormalModeIfInOperatorPendingMode() {
     if (keyManager.getCurrentModeID() == ModeID.OPERATOR_PENDING) {
       keyManager.switchTo(ModeID.NORMAL)
     }
