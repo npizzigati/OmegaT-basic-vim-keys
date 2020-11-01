@@ -415,17 +415,16 @@ class VimKeysTest {
     assertEquals(expected, actual);
   }
 
-  // TODO: fix this test 
   @Test
   void backspaceKeyBehavesCorrectlyInOperatorPendingModeYank() {
     String text = 'This is a test';
     binding.editor.editor.setText(text);
     binding.editor.editor.setCaretPosition(5);
 
-    String robotKeys = 'y BACK_SPACE a'
+    String robotKeys = 'y BACK_SPACE p'
     TestRobot.enterKeys(robotKeys);
 
-    String expected = "This is a test"
+    String expected = "This i s a test"
     String actual = binding.editor.getCurrentTranslation();
     assertEquals(expected, actual);
   }
