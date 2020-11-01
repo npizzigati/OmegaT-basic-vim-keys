@@ -35,9 +35,6 @@
 
 // Make clipboard integration optional (see Register class)
 
-// Movement keys in operator pending mode should apply operator
-// to character (e.g. dl should delete the next character)
-
 // Return cursor to normal DefaultCursor when exiting script
 
 // Is there a way to automatically change keyboard locale to US
