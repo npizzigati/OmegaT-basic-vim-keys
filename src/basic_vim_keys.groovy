@@ -5,8 +5,7 @@
 
 // TODO:
 
-// change move to end of line and beginning of line to use
-// moveForwardTo, in order to implement operators
+// deleteToLineEnd probably doesn't need to be a separate method
 
 // Add tests for moveCaret (h and l) if they're not already there
 
@@ -1151,8 +1150,11 @@ class ActionManager {
   }
 
   void moveToLineStart() {
-    IEditor.CaretPosition caretPosition = new IEditor.CaretPosition(0);
-    editor.setCaretPosition(caretPosition);
+    int currentPos = editor.getCurrentPositionInEntryTranslation();
+    int newPos = 0
+    String text = editor.getCurrentTranslation();
+
+    executeGoBackToOperation(currentPos, newPos, text)
   }
 
   void moveToLineEnd() {
