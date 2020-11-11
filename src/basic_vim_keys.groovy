@@ -10,8 +10,6 @@
 // Using a number followed by sneak s or S should probably just
 // return to normal mode or something like that
 
-// Implement C (change to end of line)
-
 // Change tests to use junit5 to see if that resolves issue of
 // runner hanging at end?
 
