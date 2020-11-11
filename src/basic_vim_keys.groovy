@@ -5,13 +5,6 @@
 
 // TODO:
 
-// deleteToLineEnd probably doesn't need to be a separate method
-
-// Add tests for moveCaret (h and l) if they're not already there
-
-// Backspace key in op pending mode doesn't seem to be working
-// correctly
-
 // Reset action keys when changing segments
 
 // Using a number followed by sneak s or S should probably just
