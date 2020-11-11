@@ -5,8 +5,6 @@
 
 // TODO:
 
-// Enter in insert mode causes an error
-
 // change move to end of line and beginning of line to use
 // moveForwardTo, in order to implement operators
 
