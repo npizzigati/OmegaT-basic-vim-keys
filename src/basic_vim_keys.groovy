@@ -447,7 +447,7 @@ class NormalMode extends Mode {
     } else if (keyChar == (int)'y') {
       keyManager.switchTo(ModeID.OPERATOR_PENDING,
                           Operator.YANK);
-    } else if ((char)keyChar =~ /[\dbewlhPpftsSxD$]/) {
+    } else if ((char)keyChar =~ /[\dbewlhPpftsSxDC$]/) {
       actionManager.processActionableKey(keyChar);
     }
   }
@@ -826,6 +826,7 @@ class ActionManager {
                    (/^d$/):    { deleteLine() },
                    (/^b$/):    { cnt -> toBeginningOfWordBehind(cnt) },
                    (/^D$/):    { deleteToLineEnd() },
+                   (/^C$/):    { changeToLineEnd() },
                    (/^x$/):    { cnt -> deleteChars(cnt) }]
 
     String match = actionMatch(actions, nonCountKeys);
@@ -1161,6 +1162,12 @@ class ActionManager {
   void deleteToLineEnd() {
     keyManager.switchTo(ModeID.OPERATOR_PENDING,
                         Operator.DELETE);
+    moveToLineEnd();
+  }
+
+  void changeToLineEnd() {
+    keyManager.switchTo(ModeID.OPERATOR_PENDING,
+                        Operator.CHANGE);
     moveToLineEnd();
   }
 }
