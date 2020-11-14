@@ -973,10 +973,8 @@ class ActionManager {
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
-    Pattern pattern = Pattern.compile(candidateRegex);
-    Matcher matcher = pattern.matcher(text);
-    List matches = getMatches(text, candidateRegex);
+    Pattern pattern = ~/((?<=[^\p{L}\d])[\p{L}\d])|(?<=[\p{L}\d\s])([^\p{L}\d\s])/
+    List matches = getMatches(text, pattern);
 
     List candidates = matches.findAll { it < currentPos };
     int newPos = (candidates.size() >= number) ? (candidates[-number]) : 0;
@@ -989,10 +987,8 @@ class ActionManager {
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    String candidateRegex = '(?=[^\\p{L}\\d])(?=\\S)|((?<=[^\\p{L}\\d])[\\p{L}\\d])'
-    Pattern pattern = Pattern.compile(candidateRegex);
-    Matcher matcher = pattern.matcher(text);
-    List matches = getMatches(text, candidateRegex);
+    Pattern pattern = ~/((?<=[^\p{L}\d])[\p{L}\d])|(?<=[\p{L}\d\s])([^\p{L}\d\s])/
+    List matches = getMatches(text, pattern);
 
     List candidates = matches.findAll { it > currentPos };
     int endIndex = (currentPos == length) ? length - 1 : length
@@ -1121,6 +1117,16 @@ class ActionManager {
 
   List getMatches(String text, String candidateRegex) {
     Pattern pattern = Pattern.compile(candidateRegex);
+    Matcher matcher = pattern.matcher(text);
+    List matches = [];
+
+    while (matcher.find()) {
+      matches << matcher.start();
+    }
+    return matches;
+  }
+
+  List getMatches(String text, Pattern pattern) {
     Matcher matcher = pattern.matcher(text);
     List matches = [];
 
