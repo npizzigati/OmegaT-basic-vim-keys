@@ -17,6 +17,8 @@
 // Convert other regexes into Groovy style, and fix e like w was
 // fixed. Eliminate unused Matcher instances
 
+// Make it so getMatches only needs and has one method signature.
+
 // Try also to get e to stop at the last
 // character, and not go to the cursor position beyond.
 
