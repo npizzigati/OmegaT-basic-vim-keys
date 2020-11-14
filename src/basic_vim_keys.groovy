@@ -5,7 +5,8 @@
 
 // TODO:
 
-// Reset action keys when changing segments
+// Reset action keys when changing segments. Also exit operator
+// pending mode
 
 // Using a number followed by sneak s or S should probably just
 // return to normal mode or something like that
@@ -13,10 +14,10 @@
 // Change tests to use junit5 to see if that resolves issue of
 // runner hanging at end?
 
-// Regex for w in normal mode should not stop at each punctuation
-// character in a series of punctuation characters. It should
-// only stop at the first (this may respectively apply to e
-// movement too). Try also to get e to stop at the last
+// Convert other regexes into Groovy style, and fix e like w was
+// fixed. Eliminate unused Matcher instances
+
+// Try also to get e to stop at the last
 // character, and not go to the cursor position beyond.
 
 // Implement r (replace) ... is this another mode entirely?
