@@ -14,11 +14,6 @@
 // Change tests to use junit5 to see if that resolves issue of
 // runner hanging at end?
 
-// Convert other regexes into Groovy style, and fix e like w was
-// fixed. Eliminate unused Matcher instances
-
-// Make it so getMatches only needs and has one method signature.
-
 // Try also to get e to stop at the last
 // character, and not go to the cursor position beyond.
 
@@ -958,10 +953,8 @@ class ActionManager {
     String text = editor.getCurrentTranslation();
     int length = text.length();
 
-    String candidateRegex = '(?<=[\\p{L}\\d])[\\p{L}\\d](?=[^\\p{L}\\d])|([^\\p{L}\\d\\s])|(.$)'
-    Pattern pattern = Pattern.compile(candidateRegex);
-    Matcher matcher = pattern.matcher(text);
-    List matches = getMatches(text, candidateRegex);
+    Pattern pattern = ~/([\p{L}\d](?=[^\p{L}\d]))|([^\p{L}\d\s])(?=[\p{L}\d\s])|(.$)/
+    List matches = getMatches(text, pattern);
 
     List candidates = matches.findAll { it > currentPos };
     int endIndex = (currentPos == length - 1) ? length - 1 : length
@@ -997,7 +990,6 @@ class ActionManager {
     int newPos = (candidates[number - 1]) ?: endIndex;
 
     executeGoForwardToOperation(currentPos, newPos, text)
-
   }
 
   void executeGoForwardToOperation(int currentPos, int newPos,
@@ -1050,8 +1042,8 @@ class ActionManager {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = "[$key]"
-    List matches = getMatches(text, candidateRegex);
+    Pattern pattern = ~/[$key]/
+    List matches = getMatches(text, pattern);
     List candidates = matches.findAll { it > currentPos };
     int newPos = (candidates[number - 1]) ?: currentPos;
 
@@ -1064,8 +1056,8 @@ class ActionManager {
     int currentPos = editor.getCurrentPositionInEntryTranslation();
     String text = editor.getCurrentTranslation();
     int length = text.length();
-    String candidateRegex = "[$key]"
-    List matches = getMatches(text, candidateRegex);
+    Pattern pattern = ~/[$key]/
+    List matches = getMatches(text, pattern);
     List candidates = matches.findAll { it < currentPos };
     int newPos = (candidates[-number]) ?: currentPos;
     executeGoBackToOperation(currentPos, newPos, text)
@@ -1108,17 +1100,6 @@ class ActionManager {
   }
 
   List getMatchingIndices(String text, Pattern pattern) {
-    Matcher matcher = pattern.matcher(text);
-    List matches = [];
-
-    while (matcher.find()) {
-      matches << matcher.start();
-    }
-    return matches;
-  }
-
-  List getMatches(String text, String candidateRegex) {
-    Pattern pattern = Pattern.compile(candidateRegex);
     Matcher matcher = pattern.matcher(text);
     List matches = [];
 
